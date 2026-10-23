@@ -40,7 +40,7 @@ For live thoughts, also **Play** Chat-Jimmy (`experiment/fast-clean-worker-20261
 
 | Check | Result |
 |---|---|
-| 13 Go tests: parser (sloppy replies, commands after chatter), heartbeat → work → resolve, budgets, duplicates, depth, work limit, stale reply not applied, busy, idle → dormant → expired, wake, errors not retried, persistence/reset, run cap + Stop, request guard | PASS |
+| 14 Go tests: parser (sloppy replies, commands after chatter), heartbeat → work → resolve, budgets, duplicates, depth, work limit, stale reply not applied, busy, idle → dormant → expired, wake, errors not retried, persistence/reset, run cap + Stop, request guard | PASS |
 | Chat-Jimmy client against a fake worker: found via worker.json, readiness sends nothing, one ask per beat, "not running" categorized | PASS |
 | **Full chain:** Thought Controller → real Chat-Jimmy worker (fast-clean) → headless Chrome → fake chat site with a sloppy bot. Event → 2 thoughts → worked → resolved in 7 beats; sleep + related event → woken + a would-say line; ~205 ms per beat; 0 unreadable after the parser fix; clean Stop | PASS |
 | Real chatjimmy.ai answering in this format | **NOT TESTED**. That's your first live run |

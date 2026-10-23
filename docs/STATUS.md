@@ -38,7 +38,7 @@ Legend: ✅ demonstrated from available evidence; 🟡 proposed/in review; ⚪ n
 - A mock worker (SIMULATED) and Chat-Jimmy through its client and worker.json.
 - Persistent state and an append-only trace that includes prompts and replies.
 
-**What ran:** 13 Go tests (PASS). Full chain against a fake chat site through the real Chat-Jimmy worker in headless Chrome (PASS). Stop leaves no processes.
+**What ran:** 14 Go tests (PASS). Full chain against a fake chat site through the real Chat-Jimmy worker in headless Chrome (PASS). Stop leaves no processes.
 
 **Found and fixed:** commands after chatter on the same line ("Let me think. NOTE: …") were unreadable.
 
