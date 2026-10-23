@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thought Controller</title>
+<style>
+:root{
+  --bg:#0e0f12; --bg2:#15171c; --card:#1c1f26; --card2:#232731; --line:#2c313c;
+  --text:#eceae5; --muted:#9a9ca3; --faint:#6b6e76;
+  --sim:#e8b04a; --sim-bg:#3a2d12;
+  --cont:#7aa7ff; --act:#5fd39a; --sleep:#b59bff; --res:#8b8f99;
+  --danger:#ff7b72; --ok:#5fd39a;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card2);color:var(--text);border-radius:8px;padding:7px 12px}
+button:hover{border-color:#4a5060}
+button.primary{background:var(--text);color:#111;border-color:var(--text);font-weight:600}
+button.ghost{background:transparent}
+button.small{padding:4px 9px;font-size:13px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font:inherit;background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+a{color:var(--cont)}
+.simbar{background:var(--sim-bg);color:var(--sim);border-bottom:1px solid #5a4518;padding:7px 20px;font-size:13px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.simbar b{letter-spacing:.08em}
+header{display:flex;align-items:center;gap:10px 14px;padding:12px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.14em;font-size:15px}
+.brand span{color:var(--sim)}
+.pill{max-width:360px;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.pill.ok .dot{background:var(--ok)} .pill.warn .dot{background:var(--sim)} .pill.bad .dot{background:var(--danger)}
+.spacer{flex:1}
+main{padding:22px 20px 60px;max-width:1400px;margin:0 auto}
+.banner{border:1px solid #5a4518;background:var(--sim-bg);color:var(--sim);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:14px}
+.banner.bad{border-color:#6b2a26;background:#2a1513;color:var(--danger)}
+h1{font-size:30px;margin:0 0 6px;font-weight:700}
+h2{font-size:18px;margin:0 0 10px;font-weight:650}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+/* profile picker */
+.who{text-align:center;padding:40px 0 10px}
+.who h1{font-weight:500;font-size:34px}
+.profiles{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;margin:30px 0}
+.profile{width:170px;text-align:center;cursor:pointer;background:none;border:none;padding:0;color:var(--muted)}
+.profile .face{width:170px;height:170px;border-radius:14px;display:grid;place-items:center;font-size:62px;font-weight:700;color:#fff;border:3px solid transparent;transition:border-color .15s, transform .15s}
+.profile:hover .face,.profile:focus-visible .face{border-color:var(--text);transform:translateY(-2px)}
+.profile:hover{color:var(--text)}
+.profile .name{margin-top:12px;font-size:17px;color:inherit}
+.profile .meta{font-size:12.5px;color:var(--faint);margin-top:3px}
+.face.ai_companion{background:linear-gradient(135deg,#3a6df0,#7b4bd6)}
+.face.business{background:linear-gradient(135deg,#1f9e78,#3b7d3a)}
+.face.person{background:linear-gradient(135deg,#d0673a,#a83d5a)}
+.face.project{background:linear-gradient(135deg,#7d6b2e,#b08a2a)}
+.face.other{background:linear-gradient(135deg,#59606e,#3a3f4a)}
+.face.system{background:repeating-linear-gradient(45deg,#262a33,#262a33 10px,#20242c 10px,#20242c 20px);font-size:54px;color:var(--muted)}
+/* browse */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.tab{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;border:1px solid var(--line);background:var(--bg2);color:var(--muted)}
+.tab.on{color:var(--text);border-color:var(--text)}
+.tab .mini{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff}
+.hero{display:grid;grid-template-columns:96px 1fr;gap:16px 22px;align-items:center;padding:22px;border-radius:14px;background:linear-gradient(90deg,#1a1d24,#14161b);border:1px solid var(--line);margin-bottom:26px}
+.hero>.actions{grid-column:1/-1;padding-top:14px;border-top:1px solid var(--line)}
+.hero .face{width:96px;height:96px;font-size:40px;border-radius:12px;display:grid;place-items:center;font-weight:700;color:#fff}
+.hero .info{flex:1;min-width:240px}
+.hero .counts{display:flex;gap:6px 18px;margin-top:10px;flex-wrap:wrap}
+.count{white-space:nowrap}
+.count{font-size:13px;color:var(--muted)} .count b{color:var(--text);font-size:16px;margin-right:4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row{margin-bottom:26px}
+.row h2{display:flex;align-items:center;gap:10px}
+.row h2 .n{font-size:13px;color:var(--faint);font-weight:400}
+.rail{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x proximity}
+.rail::-webkit-scrollbar{height:8px}.rail::-webkit-scrollbar-thumb{background:#2c313c;border-radius:8px}
+.tcard{flex:0 0 250px;height:142px;scroll-snap-align:start;border-radius:var(--radius);background:var(--card);border:1px solid var(--line);padding:14px 14px 12px;text-align:left;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden}
+.tcard:hover,.tcard:focus-visible{background:var(--card2);border-color:#4a5060;transform:scale(1.02)}
+.tcard{transition:transform .12s, background .12s}
+.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--faint)}
+.tcard.continuing::before{background:var(--cont)} .tcard.active::before{background:var(--act)} .tcard.sleeping::before{background:var(--sleep)} .tcard.resolved::before{background:var(--res)}
+.tcard .t{font-weight:600;font-size:15px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tcard .foot{margin-top:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--faint)}
+.chip{font-size:10.5px;letter-spacing:.08em;font-weight:700;border-radius:4px;padding:2px 6px;background:var(--sim-bg);color:var(--sim);border:1px solid #5a4518}
+.emptyrow{flex:0 0 auto;color:var(--faint);font-size:13px;padding:14px 4px}
+.empty{border:1px dashed var(--line);border-radius:14px;padding:46px 20px;text-align:center;color:var(--muted)}
+.empty h2{color:var(--text);font-size:22px}
+.state{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;font-weight:600}
+.state.continuing{background:#1d2a45;color:var(--cont)} .state.active{background:#173327;color:var(--act)} .state.sleeping{background:#2a2245;color:var(--sleep)} .state.resolved{background:#26282d;color:var(--res)}
+/* system */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(440px,100%),1fr));gap:14px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.kv{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px 12px;font-size:13.5px}
+.kv div:nth-child(odd){color:var(--muted)}
+.kv .mono{word-break:break-all}
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;z-index:20;overflow:auto}
+.scrim.on{display:flex}
+.modal{width:min(760px,100%);background:var(--bg2);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.modal .top{padding:20px 22px 0}
+.modal .body{padding:16px 22px 22px}
+.mtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 22px;margin-top:14px}
+.mtab{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:9px 12px;color:var(--muted)}
+.mtab.on{color:var(--text);border-bottom-color:var(--text)}
+.timeline{list-style:none;padding:0;margin:0;border-left:2px solid var(--line)}
+.timeline li{padding:0 0 14px 16px;position:relative;font-size:14px}
+.timeline li::before{content:"";position:absolute;left:-6px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--card2);border:2px solid var(--muted)}
+pre.diag{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:46vh;overflow:auto;font-size:12.5px}
+.notes{list-style:none;padding:0;margin:8px 0}
+.notes li{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:14px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--text);color:#111;border-radius:8px;padding:9px 16px;font-size:14px;display:none;z-index:40;max-width:90vw}
+.toast.bad{background:var(--danger)}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(560px,100%);background:var(--bg2);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .2s;z-index:30;display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer .head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);gap:8px}
+.drawer .content{padding:14px 16px;overflow:auto;flex:1}
+.ev{font-size:12.5px;border-bottom:1px solid var(--line);padding:6px 0}
+.ev .k{color:var(--sim);margin:0 6px}
+form.add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+form.add input{min-width:260px;flex:1}
+@media (max-width:600px){.profile,.profile .face{width:130px}.profile .face{height:130px;font-size:48px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="simbar"><b>SIMULATED</b><span>Test prototype · thoughts are test fixtures made by buttons · no AI worker · no GitHub · no authentication on this local API · nothing runs on its own</span></div>
+<header>
+  <div class="brand">THOUGHT <span>CONTROLLER</span></div>
+  <span class="pill" id="svcPill"><span class="dot"></span><span>…</span></span>
+  <span class="pill warn" title="No AI worker exists in this prototype"><span class="dot"></span>Worker: NOT READY</span>
+  <span class="pill" id="buildPill" title="Running build"><span>…</span></span>
+  <div class="spacer"></div>
+  <button class="ghost small" id="btnProfiles" hidden>Profiles</button>
+  <button class="ghost small" id="btnLogs">Logs</button>
+  <button class="small" id="btnDiag">Copy Diagnostics</button>
+  <button class="ghost small" id="btnStop" hidden title="Simulated stop: the host keeps running">Stop service</button>
+</header>
+<main id="main"></main>
+
+<div class="scrim" id="scrim"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="drawer" id="drawer"><div class="head"><b>Logs</b><span class="faint" style="font-size:13px">newest last</span><div class="spacer"></div><button class="small ghost" id="closeDrawer">Close</button></div><div class="content" id="drawerBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const initial = n => esc((n||"?").trim().charAt(0).toUpperCase());
+const ago = t => { const s = (Date.now() - new Date(t)) / 1000; if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60)+"m ago"; if (s < 86400) return Math.floor(s/3600)+"h ago"; return new Date(t).toLocaleDateString(); };
+const when = t => new Date(t).toLocaleString();
+const rid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+let W = null, view = {mode:"profiles", entity:null}, thoughts = [], openThought = null, mtab = "details";
+const wantInstall = new URLSearchParams(location.search).get("installation");
+
+function toast(msg, bad){ const t=$("#toast"); t.textContent=msg; t.className="toast"+(bad?" bad":""); t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none", bad?6000:2600); }
+async function api(path, opts={}){
+  const o = {headers:{}, ...opts};
+  if (o.body !== undefined){ o.method = o.method || "POST"; o.headers["Content-Type"]="application/json"; o.body = JSON.stringify(o.body); }
+  const r = await fetch(path, o);
+  const ct = r.headers.get("content-type")||"";
+  const data = ct.includes("json") ? await r.json() : await r.text();
+  if (!r.ok) throw new Error((data && data.error) || data.reason || ("HTTP "+r.status));
+  return data;
+}
+async function copyText(text){
+  try { await navigator.clipboard.writeText(text); toast("Copied"); }
+  catch { showModal(`<div class="top"><h2>Copy this</h2><p class="muted">The browser blocked the clipboard. Select all and copy.</p></div><div class="body"><textarea style="width:100%;height:50vh" class="mono">${esc(text)}</textarea><p><button onclick="closeModal()">Close</button></p></div>`); }
+}
+
+let lastSig = "";
+async function refresh(poll){
+  try { W = await api("/api/workspace"); } catch(e){ $("#main").innerHTML = `<div class="banner bad">Can't reach this Thought Controller host: ${esc(e.message)}</div>`; return; }
+  const ws = W.workspace, c = W.config;
+  const sp = $("#svcPill");
+  sp.className = "pill " + (ws.started ? "ok" : "warn");
+  sp.innerHTML = `<span class="dot"></span>${ws.started ? "Service READY (simulated)" : "Service NOT STARTED"}`;
+  $("#buildPill").innerHTML = `<span class="mono">${esc(c.commit.slice(0,12))} · ${esc(c.branch)}</span>`; $("#buildPill").title = `Running build ${c.branch} @ ${c.commit}`;
+  $("#btnStop").hidden = !ws.started; $("#btnProfiles").hidden = !ws.started;
+  if (view.entity && !ws.entities.find(e => e.entity_id === view.entity)) view = {mode:"profiles", entity:null};
+  if (view.mode === "browse") await loadThoughts();
+  const sig = JSON.stringify([ws.started, ws.binding, ws.entities, view, thoughts, W.counters]);
+  if (poll && sig === lastSig) return;
+  lastSig = sig;
+  render();
+}
+async function loadThoughts(){
+  try { thoughts = (await api(`/api/entities/${view.entity}/thoughts`)).thoughts; }
+  catch(e){ thoughts = []; toast(e.message, true); }
+}
+
+function installBanner(ws){
+  if (!wantInstall || !ws.started) return "";
+  if (ws.binding.installation_id === wantInstall) return "";
+  return `<div class="banner bad">Identity opened this page for installation <span class="mono">${esc(wantInstall)}</span>, but this host is running the controller for installation <span class="mono">${esc(ws.binding.installation_id)}</span>. Nothing from either installation is mixed — go back to Identity.</div>`;
+}
+
+function render(){
+  const ws = W.workspace, c = W.config, m = $("#main");
+  if (!ws.started){
+    m.innerHTML = `
+      <div class="empty" style="margin-top:20px">
+        <h2>No controller service is running</h2>
+        <p>This Thought Controller <b>host</b> is up, but no installation's controller service has been started.</p>
+        <p class="muted">Open <b>Identity</b>. With your approval it asks this host's <b>simulated launcher</b> to start the controller for your installation, using IDs Identity already made.<br>Nothing here starts by itself, and this page never invents an administrator or service ID.</p>
+      </div>
+      <div class="grid" style="margin-top:20px">
+        <div class="panel"><h2>This host</h2><div class="kv">
+          <div>Reference</div><div>Arameair/Thought-Controller</div>
+          <div>Branch</div><div class="mono">${esc(c.branch)} (${esc(c.branch_source)}${c.detached?", detached":""})</div>
+          <div>Commit</div><div class="mono">${esc(c.commit)}</div>
+          <div>Provenance</div><div>TEST / LOCAL CHECKOUT — no published approved release exists</div>
+          <div>Port · pid</div><div class="mono">${esc(c.port)} · ${W.pid}</div>
+          <div>Data folder</div><div class="mono">${esc(c.data_dir)} <span class="faint">(${esc(c.data_source)})</span></div>
+          <div>Protocol</div><div class="mono">${esc(W.protocol)} (SIMULATED, unauthenticated)</div>
+        </div></div>
+        <div class="panel"><h2>Lifecycle so far</h2>${countersHTML(W.counters)}</div>
+      </div>`;
+    return;
+  }
+  if (view.mode === "system") return renderSystem();
+  if (view.mode === "browse") return renderBrowse();
+  m.innerHTML = installBanner(ws) + `
+    <div class="who"><h1>Who's thinking?</h1><p class="muted">Identities registered with this installation's controller. Pick one to browse its thoughts.</p></div>
+    <div class="profiles">
+      ${ws.entities.map(e => `<button class="profile" data-e="${e.entity_id}"><div class="face ${esc(e.entity_type)}">${initial(e.display_name)}</div>
+        <div class="name">${esc(e.display_name)}</div><div class="meta">${esc(e.type_label)} · ${e.total ? e.total+" thought"+(e.total>1?"s":"") : "no thoughts yet"}</div></button>`).join("")}
+      <button class="profile" data-sys="1"><div class="face system">⚙</div><div class="name">System Services</div><div class="meta">Thought Controller service identity</div></button>
+    </div>
+    ${ws.entities.length ? "" : `<div class="empty"><h2>No identities registered yet</h2><p class="muted">Create identities in Identity; they are registered here when the controller starts.</p></div>`}`;
+  m.querySelectorAll("[data-e]").forEach(b => b.onclick = async () => { view = {mode:"browse", entity:b.dataset.e}; await loadThoughts(); render(); });
+  m.querySelector("[data-sys]").onclick = () => { view = {mode:"system"}; render(); };
+}
+
+function tabsHTML(){
+  const ws = W.workspace;
+  return `<div class="tabs">${ws.entities.map(e => `<button class="tab ${view.entity===e.entity_id?"on":""}" data-e="${e.entity_id}"><span class="mini face ${esc(e.entity_type)}">${initial(e.display_name)}</span>${esc(e.display_name)} <span class="faint">${e.total}</span></button>`).join("")}
+    <button class="tab ${view.mode==="system"?"on":""}" data-sys="1"><span class="mini face system" style="font-size:13px">⚙</span>System Services</button></div>`;
+}
+function wireTabs(){
+  document.querySelectorAll(".tabs [data-e]").forEach(b => b.onclick = async () => { view = {mode:"browse", entity:b.dataset.e}; await loadThoughts(); render(); });
+  document.querySelector(".tabs [data-sys]").onclick = () => { view = {mode:"system"}; render(); };
+}
+
+function renderBrowse(){
+  const ws = W.workspace, e = ws.entities.find(x => x.entity_id === view.entity);
+  const rows = W.states.map(s => ({...s, items: thoughts.filter(t => t.state === s.Key)}));
+  const m = $("#main");
+  m.innerHTML = installBanner(ws) + tabsHTML() + `
+    <section class="hero">
+      <div class="face ${esc(e.entity_type)}">${initial(e.display_name)}</div>
+      <div class="info"><h1>${esc(e.display_name)}</h1>
+        <div class="muted">${esc(e.type_label)} · <span class="mono">${esc(e.entity_id)}</span> <button class="small ghost" id="cpEid">Copy ID</button></div>
+        <div class="counts">${W.states.map(s => `<span class="count"><b>${e.counts[s.Key]||0}</b>${esc(s.Row)}</span>`).join("")}</div>
+      </div>
+      <div class="actions">
+        <form class="add" id="addForm"><input id="addTitle" placeholder="New simulated thought title" maxlength="140" required>
+          <select id="addState">${W.states.map(s => `<option value="${s.Key}">${esc(s.Row)}</option>`).join("")}</select>
+          <button class="primary">Add simulated thought</button></form>
+        <button id="btnSample">Load sample set</button>
+      </div>
+    </section>
+    ${thoughts.length === 0 ? `<div class="empty"><h2>No thoughts yet</h2><p>Thought Controller has not recorded any thoughts for <b>${esc(e.display_name)}</b>.</p>
+      <p class="muted">That is the honest state: nothing in this prototype thinks on its own and there is no AI worker. Use <b>Add simulated thought</b> or <b>Load sample set</b> to create clearly labeled test thoughts for this identity only.</p></div>`
+    : rows.map(r => `<section class="row"><h2>${esc(r.Row)} <span class="n">${r.items.length}</span></h2><div class="rail">
+      ${r.items.length ? r.items.map(t => `<button class="tcard ${t.state}" data-t="${t.thought_id}"><div class="t">${esc(t.title)}</div>
+        <div class="foot"><span class="chip">SIMULATED</span><span>${ago(t.updated_at)}</span>${t.notes.length?`<span>· ${t.notes.length} note${t.notes.length>1?"s":""}</span>`:""}</div></button>`).join("")
+      : `<div class="emptyrow">Nothing ${r.Key === "resolved" ? "resolved" : "here"} yet.</div>`}</div></section>`).join("")}`;
+  wireTabs();
+  $("#cpEid").onclick = () => copyText(e.entity_id);
+  $("#addForm").onsubmit = async ev => { ev.preventDefault();
+    try { await api(`/api/entities/${e.entity_id}/thoughts`, {body:{title:$("#addTitle").value, state:$("#addState").value, request_id:rid()}}); toast("Simulated thought saved"); await refresh(); }
+    catch(err){ toast(err.message, true); } };
+  $("#btnSample").onclick = async () => { try { await api(`/api/entities/${e.entity_id}/samples`, {body:{request_id:rid()}}); toast("Sample set saved for this identity"); await refresh(); } catch(err){ toast(err.message, true); } };
+  m.querySelectorAll("[data-t]").forEach(b => b.onclick = () => openDetail(b.dataset.t));
+}
+
+function renderSystem(){
+  const ws = W.workspace, b = ws.binding, c = W.config;
+  $("#main").innerHTML = installBanner(ws) + tabsHTML() + `
+    <section class="hero"><div class="face system" style="width:96px;height:96px;border-radius:12px;display:grid;place-items:center;font-size:40px">⚙</div>
+      <div class="info"><h1>System Services</h1><div class="muted">The Thought Controller is itself a registered <b>system-service identity</b>. It manages other identities' thoughts; it has no thought stream of its own, by design.</div></div></section>
+    <div class="grid">
+      <div class="panel"><h2>Thought Controller service identity</h2><div class="kv">
+        <div>Service ID</div><div class="mono">${esc(b.service_id)}</div>
+        <div>Installation ID</div><div class="mono">${esc(b.installation_id)}</div>
+        <div>Administrator ID</div><div class="mono">${esc(b.admin_id)}</div>
+        <div>Bound</div><div>${when(b.bound_at)}</div>
+        <div>Issued by</div><div>Identity (these IDs were sent by Identity's simulated launcher; this host never makes them up)</div>
+        <div>Thoughts</div><div>None — a service identity doesn't think about itself</div>
+      </div><p><button class="small" id="cpIds">Copy IDs</button></p></div>
+      <div class="panel"><h2>Running service</h2><div class="kv">
+        <div>Status</div><div>READY (SIMULATED)</div>
+        <div>Started</div><div>${when(ws.started_at)}</div>
+        <div>Start request</div><div class="mono">${esc(ws.start_request_id)}</div>
+        <div>Launcher</div><div>${esc(ws.launcher||"—")}</div>
+        <div>Consent ref</div><div class="mono">${esc(ws.consent_id||"—")}</div>
+        <div>Installation data</div><div class="mono">${esc(ws.installation_data_dir)}</div>
+        <div>Authentication</div><div>NONE (simulated handshake)</div>
+        <div>AI worker</div><div>NOT READY — none exists · model calls 0</div>
+      </div></div>
+      <div class="panel"><h2>Reference build</h2><div class="kv">
+        <div>Repository</div><div>Arameair/Thought-Controller (private)</div>
+        <div>Branch</div><div class="mono">${esc(c.branch)}</div>
+        <div>Commit</div><div class="mono">${esc(c.commit)}</div>
+        <div>Provenance</div><div>TEST / LOCAL CHECKOUT. There is no published approved release, and this installation does not follow upstream automatically.</div>
+      </div></div>
+      <div class="panel"><h2>Lifecycle counters</h2>${countersHTML(W.counters)}</div>
+      ${ws.problems.length ? `<div class="panel"><h2>Files that couldn't be loaded</h2>${ws.problems.map(p=>`<div class="mono">${esc(p.file)} — ${esc(p.reason)}</div>`).join("")}<p class="faint">Left untouched.</p></div>` : ""}
+    </div>`;
+  wireTabs();
+  $("#cpIds").onclick = () => copyText(`installation_id ${b.installation_id}\nadministrator_id ${b.admin_id}\ncontroller_service_id ${b.service_id}`);
+}
+
+function countersHTML(k){
+  return `<div class="kv"><div>Start requests</div><div>${k.start_requests}</div><div>Services started</div><div>${k.services_started}</div>
+    <div>Reused (already running)</div><div>${k.already_running}</div><div>Duplicate requests</div><div>${k.duplicate_requests}</div>
+    <div>Refused</div><div>${k.refused}</div><div>Stops</div><div>${k.stops}</div><div>Model calls</div><div>${k.model_calls}</div><div>Processes launched</div><div>0 (never)</div></div>`;
+}
+
+// ---------- thought detail ----------
+async function openDetail(tid){
+  try { openThought = (await api(`/api/entities/${view.entity}/thoughts/${tid}`)).thought; } catch(e){ return toast(e.message, true); }
+  mtab = "details"; renderDetail();
+}
+async function renderDetail(){
+  const t = openThought, row = W.states.find(s => s.Key === t.state);
+  let body = "";
+  if (mtab === "details"){
+    body = `<div class="kv">
+      <div>Origin</div><div>${esc(t.origin)}</div>
+      <div>Identity</div><div class="mono">${esc(t.entity_id)}</div>
+      <div>Created</div><div>${when(t.created_at)}</div>
+      <div>Updated</div><div>${when(t.updated_at)}</div>
+      <div>Worker calls</div><div>${t.worker_calls} — no model has ever responded to this thought</div>
+    </div>
+    <h2 style="margin-top:18px">Notes</h2>
+    ${t.notes.length ? `<ul class="notes">${t.notes.map(n => `<li>${esc(n.text)}<div class="faint" style="font-size:12px">${when(n.at)}</div></li>`).join("")}</ul>` : `<p class="faint">No notes yet.</p>`}
+    <form class="add" id="noteForm"><input id="noteText" placeholder="Add an owner note" maxlength="1000" required><button>Add note</button></form>
+    <h2 style="margin-top:18px">Move this thought</h2>
+    <div class="actions">${W.states.filter(s => s.Key !== t.state).map(s => `<button class="small" data-s="${s.Key}">${{continuing:"Continue",active:"Activate",sleeping:"Sleep",resolved:"Resolve"}[s.Key]}</button>`).join("")}
+      <span class="faint" style="font-size:12.5px">Owner test controls — each change is saved and added to the history.</span></div>`;
+  } else if (mtab === "history"){
+    body = `<ul class="timeline">${t.history.map(h => `<li><b>${esc(h.kind === "created" ? "Created" : h.kind === "state" ? "State changed" : "Note added")}</b>
+      ${h.from||h.to ? ` <span class="state ${esc(h.from||"")}">${esc(h.from||"")}</span>${h.from?" → ":""}<span class="state ${esc(h.to)}">${esc(h.to||"")}</span>` : ""}
+      <div class="muted">${esc(h.detail)}</div><div class="faint" style="font-size:12px">${when(h.at)}</div></li>`).join("")}</ul>`;
+  } else {
+    body = `<p class="faint">Loading…</p>`;
+  }
+  showModal(`<div class="top"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="state ${t.state}">${esc(row.Row)}</span><span class="chip">SIMULATED</span><div class="spacer"></div><button class="small ghost" onclick="closeModal()">Close</button></div>
+    <h1 style="font-size:24px;margin-top:10px">${esc(t.title)}</h1><div class="faint mono">${esc(t.thought_id)}</div></div>
+    <div class="mtabs">${[["details","Details"],["history","Development history"],["diag","Diagnostics"]].map(([k,l]) => `<button class="mtab ${mtab===k?"on":""}" data-m="${k}">${l}</button>`).join("")}</div>
+    <div class="body" id="mbody">${body}</div>`);
+  document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { mtab = b.dataset.m; renderDetail(); });
+  if (mtab === "details"){
+    $("#noteForm").onsubmit = async ev => { ev.preventDefault(); await change({note:$("#noteText").value}); };
+    document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => change({state:b.dataset.s}));
+  }
+  if (mtab === "diag"){
+    try { const d = await api(`/api/entities/${t.entity_id}/thoughts/${t.thought_id}/diagnostics`);
+      $("#mbody").innerHTML = `<pre class="diag">${esc(d)}</pre><button id="cpTd">Copy thought diagnostics</button>`; $("#cpTd").onclick = () => copyText(d); }
+    catch(e){ $("#mbody").innerHTML = `<div class="banner bad">${esc(e.message)}</div>`; }
+  }
+}
+async function change(body){
+  try { openThought = (await api(`/api/entities/${openThought.entity_id}/thoughts/${openThought.thought_id}`, {body})).thought; toast("Saved"); renderDetail(); refresh(); }
+  catch(e){ toast(e.message, true); }
+}
+function showModal(html){ $("#modal").innerHTML = html; $("#scrim").classList.add("on"); }
+function closeModal(){ $("#scrim").classList.remove("on"); openThought = null; }
+$("#scrim").onclick = e => { if (e.target.id === "scrim") closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape"){ closeModal(); $("#drawer").classList.remove("on"); } });
+
+// ---------- header actions ----------
+$("#btnDiag").onclick = async () => { try { copyText(await api("/api/diagnostics")); } catch(e){ toast(e.message, true); } };
+$("#btnProfiles").onclick = () => { view = {mode:"profiles"}; render(); };
+$("#btnStop").onclick = async () => {
+  if (!confirm("Stop this installation's controller service? (SIMULATED stop — the host keeps running and data stays on disk. Identity can start it again with your saved approval.)")) return;
+  try { await api("/api/sim/lifecycle/stop", {body:{reason:"owner pressed Stop service on the Thought Controller page"}}); toast("Controller service stopped"); view = {mode:"profiles"}; refresh(); }
+  catch(e){ toast(e.message, true); } };
+$("#btnLogs").onclick = () => {
+  const ws = W.workspace, ev = [...(W.host_events||[]).map(e=>({...e,src:"host"})), ...(ws.events||[]).map(e=>({...e,src:"installation"}))].sort((a,b)=>new Date(a.at)-new Date(b.at));
+  $("#drawerBody").innerHTML = (W.host_events_error||ws.events_error ? `<div class="banner bad">${esc(W.host_events_error||ws.events_error)}</div>` : "") +
+    ev.map(e => `<div class="ev"><span class="faint">${new Date(e.at).toLocaleTimeString()}</span><span class="k">${esc(e.src)} · ${esc(e.kind)}</span>${esc(e.detail)} ${e.id?`<span class="mono faint">${esc(e.id)}</span>`:""}</div>`).join("");
+  $("#drawer").classList.add("on"); };
+$("#closeDrawer").onclick = () => $("#drawer").classList.remove("on");
+
+refresh();
+setInterval(() => {
+  const typing = document.activeElement && ["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName);
+  if (!openThought && !document.hidden && !typing) refresh(true);
+}, 4000);
+</script>
+</body>
+</html>

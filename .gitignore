@@ -1,0 +1,12 @@
+# Never commit credentials, runtime state or build output.
+.env
+.env.*
+*.pem
+*.key
+*.token
+secrets/
+data/
+state/
+*.log
+thought-controller
+thought-controller.exe
