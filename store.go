@@ -1,31 +1,53 @@
 package main
 
-// State lives in ~/.thought-controller/: state.json (the current mind,
-// rewritten after each change) and trace.jsonl (every beat and owner
-// action, append-only). Both survive restarts.
+// State lives in a data folder: state.json (the current mind, rewritten
+// after each change) and trace.jsonl (every beat and owner action,
+// append-only). Every write error is reported, never ignored.
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
 )
 
-type Store struct {
-	dir string
-	mu  sync.Mutex
-	tf  *os.File
+// fileOps is the slice of the file system the store uses; tests replace it
+// to simulate a full disk or a failed rename.
+type fileOps interface {
+	WriteFile(name string, b []byte) error
+	Rename(from, to string) error
+	OpenAppend(name string) (io.WriteCloser, error)
 }
 
-func openStore(dir string) (*Store, error) {
+type osOps struct{}
+
+func (osOps) WriteFile(n string, b []byte) error { return os.WriteFile(n, b, 0o600) }
+func (osOps) Rename(a, b string) error           { return os.Rename(a, b) }
+func (osOps) OpenAppend(n string) (io.WriteCloser, error) {
+	return os.OpenFile(n, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+}
+
+type Store struct {
+	dir string
+	ops fileOps
+	mu  sync.Mutex
+	tf  io.WriteCloser
+}
+
+func openStore(dir string) (*Store, error) { return openStoreWith(dir, osOps{}) }
+
+func openStoreWith(dir string, ops fileOps) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "trace.jsonl"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	f, err := ops.OpenAppend(filepath.Join(dir, "trace.jsonl"))
 	if err != nil {
 		return nil, err
 	}
-	return &Store{dir: dir, tf: f}, nil
+	return &Store{dir: dir, ops: ops, tf: f}, nil
 }
 
 func (s *Store) load(m *Mind) {
@@ -58,33 +80,61 @@ func (s *Store) load(m *Mind) {
 	}
 }
 
-func (s *Store) save(m *Mind) {
+// save writes state.json via a temp file, so a failed write never
+// damages the last good copy.
+func (s *Store) save(m *Mind) error {
 	b, err := json.MarshalIndent(m, "", " ")
 	if err != nil {
-		return
+		return err
 	}
 	p := filepath.Join(s.dir, "state.json")
-	if os.WriteFile(p+".tmp", b, 0o600) == nil {
-		_ = os.Rename(p+".tmp", p)
+	if err := s.ops.WriteFile(p+".tmp", b); err != nil {
+		return err
 	}
+	return s.ops.Rename(p+".tmp", p)
 }
 
-func (s *Store) append(r BeatRecord) {
+func (s *Store) append(r BeatRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if b, err := json.Marshal(r); err == nil {
-		_, _ = s.tf.Write(append(b, '\n'))
+	if s.tf == nil { // e.g. a reset whose reopen failed: try again now
+		f, err := s.ops.OpenAppend(filepath.Join(s.dir, "trace.jsonl"))
+		if err != nil {
+			return fmt.Errorf("trace file is not open: %w", err)
+		}
+		s.tf = f
 	}
+	b, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	_, err = s.tf.Write(append(b, '\n'))
+	return err
 }
 
-// reset starts a new trace file; the old one is kept with a timestamp.
-func (s *Store) reset() {
+// reset starts a new trace file and keeps the old one. If anything fails
+// the old file stays in place and open.
+func (s *Store) reset() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p := filepath.Join(s.dir, "trace.jsonl")
-	s.tf.Close()
-	_ = os.Rename(p, filepath.Join(s.dir, "trace-before-reset-"+nowStamp()+".jsonl"))
-	s.tf, _ = os.OpenFile(p, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	old := filepath.Join(s.dir, "trace-before-reset-"+nowStamp()+".jsonl")
+	if s.tf != nil {
+		s.tf.Close()
+		s.tf = nil
+	}
+	if err := s.ops.Rename(p, old); err != nil && !errors.Is(err, os.ErrNotExist) {
+		s.tf, _ = s.ops.OpenAppend(p)
+		return err
+	}
+	f, err := s.ops.OpenAppend(p)
+	if err != nil {
+		_ = s.ops.Rename(old, p)
+		s.tf, _ = s.ops.OpenAppend(p)
+		return err
+	}
+	s.tf = f
+	return nil
 }
 
 func (s *Store) close() {
@@ -92,5 +142,6 @@ func (s *Store) close() {
 	defer s.mu.Unlock()
 	if s.tf != nil {
 		s.tf.Close()
+		s.tf = nil
 	}
 }

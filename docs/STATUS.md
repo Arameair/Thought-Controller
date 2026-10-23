@@ -1,7 +1,7 @@
 # Project status and experiment journal
 
 **Last reviewed:** 2026-10-23 (design preparation)  
-**Overall:** 🟢 v1 runnable on `experiment/first-thoughts-v1-20261023` — owner-triggered beats only, mock or live Chat-Jimmy.  
+**Overall:** 🟢 v1 repair prototype on `experiment/v1-repair-20261023` — owner-triggered beats only; P0 fixed and tested here.  
 **Owner approval:** pending (owner asked for a first version to start testing, 2026-10-23).  
 **Next decision:** owner's first live run with Chat-Jimmy; decide what to keep, change or drop.
 
@@ -24,6 +24,18 @@
 Legend: ✅ demonstrated from available evidence; 🟡 proposed/in review; ⚪ not started; 🔴 failed/blocked when observed. A project being reachable is not the same as a capability passing its experiment.
 
 ## Journal
+
+### 2026-10-23 — v1 repair prototype
+
+**Branch:** `experiment/v1-repair-20261023` (from v1 `daaa0c3`; alpha untouched). Answers the repair notes and Issue #3.
+
+**What changed:** all P0 items (busy guards and Stop/cancel, pending events on unreadable heartbeats, readiness before every send plus source labels, surfaced save errors, safe reset, per-branch data folder). P1 first versions (token on reads, redacted diagnostic, optional text-free trace, stage strip and outcomes, quoted events, echo guard, better duplicate check). A slow mock and Ask directly for the walk-through. Details: [V1_REPAIR_RESULTS](V1_REPAIR_RESULTS_2026-10-23.md).
+
+**What ran:** 31 Go tests (PASS). Walk-through A–F here through the real Chat-Jimmy worker and a fake chat site (PASS, see the results file).
+
+**Not verified:** the real chatjimmy.ai site.
+
+**Decision:** owner to run the walk-through. No promotion requested.
 
 ### 2026-10-23 — v1: first runnable thoughts
 

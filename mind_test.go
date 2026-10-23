@@ -60,19 +60,26 @@ func itoa(i int) string { return strconv.Itoa(i) }
 
 // scripted worker: returns canned replies in order, records prompts.
 type scripted struct {
-	mu      sync.Mutex
-	replies []string
-	prompts []string
-	hold    chan struct{} // if set, Ask waits for it
-	err     error
+	mu       sync.Mutex
+	replies  []string
+	prompts  []string
+	hold     chan struct{} // if set, Ask waits for it (or for cancel)
+	err      error
+	notReady bool
 }
 
-func (s *scripted) Name() string                         { return "scripted" }
-func (s *scripted) Simulated() bool                      { return true }
-func (s *scripted) Ready(context.Context) (bool, string) { return true, "ok" }
+func (s *scripted) Name() string    { return "scripted" }
+func (s *scripted) Simulated() bool { return true }
+func (s *scripted) Ready(context.Context) Readiness {
+	return Readiness{OK: !s.notReady, Source: "scripted", Simulated: true, Detail: "scripted"}
+}
 func (s *scripted) Ask(ctx context.Context, p string, fresh bool) (WorkerReply, error) {
 	if s.hold != nil {
-		<-s.hold
+		select {
+		case <-s.hold:
+		case <-ctx.Done():
+			// like a real worker that was already asked: the reply still comes back
+		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -84,7 +91,7 @@ func (s *scripted) Ask(ctx context.Context, p string, fresh bool) (WorkerReply, 
 	if len(s.replies) > 0 {
 		r, s.replies = s.replies[0], s.replies[1:]
 	}
-	return WorkerReply{Text: r, Took: 5 * time.Millisecond, RequestID: "req"}, nil
+	return WorkerReply{Text: r, Took: 5 * time.Millisecond, RequestID: "req", Simulated: true}, ctx.Err()
 }
 
 func states(m *Mind) string {

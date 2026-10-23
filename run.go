@@ -57,21 +57,26 @@ func (r *runner) start(m *Mind, w Worker, n int) error {
 		for i := 0; i < n; i++ {
 			rec, err := m.Step(ctx, w)
 			r.mu.Lock()
-			if err == nil || rec.Beat > 0 {
+			if rec.Beat > 0 {
 				r.st.Done++
-				r.st.Calls++
+				if rec.Stages != nil && rec.Stages.Sent != "no" {
+					r.st.Calls++
+				}
 			}
 			r.mu.Unlock()
-			if errors.Is(err, ErrNothing) {
+			switch {
+			case errors.Is(err, ErrNothing):
 				stopped = "nothing left to think about"
-				break
-			}
-			if err != nil {
-				stopped = "stopped on error: " + err.Error()
-				break
-			}
-			if ctx.Err() != nil {
+			case errors.Is(err, ErrCancelled):
 				stopped = "stopped by owner"
+			case errors.Is(err, ErrUnreadable):
+				stopped = "stopped: heartbeat reply was unreadable — events still pending; press Think once to retry"
+			case err != nil:
+				stopped = "stopped on error: " + err.Error()
+			case ctx.Err() != nil:
+				stopped = "stopped by owner"
+			}
+			if err != nil || ctx.Err() != nil {
 				break
 			}
 			if i < n-1 {
@@ -121,16 +126,39 @@ type Metrics struct {
 	Thoughts      map[string]int `json:"thoughts"`
 	Created       int            `json:"created"`
 	Simulated     int            `json:"simulated_calls"`
+	Baselines     int            `json:"baselines"`
+	Outcomes      map[string]int `json:"outcomes"`
+	NotSent       int            `json:"not_sent"`
 }
 
 func (m *Mind) metrics() Metrics {
-	mt := Metrics{Errors: map[string]int{}, RejectReasons: map[string]int{}, Thoughts: map[string]int{}}
+	mt := Metrics{Errors: map[string]int{}, RejectReasons: map[string]int{}, Thoughts: map[string]int{}, Outcomes: map[string]int{}}
 	var ms []int64
 	for _, r := range m.trace {
-		if r.Kind != "heartbeat" && r.Kind != "work" {
+		if r.Kind != "heartbeat" && r.Kind != "work" && r.Kind != "baseline" {
 			continue
 		}
+		if r.Outcome != "" {
+			mt.Outcomes[r.Outcome]++
+		}
+		if r.Stages != nil && r.Stages.Sent == "no" {
+			mt.NotSent++
+			if r.ErrorCat != "" {
+				mt.Errors[r.ErrorCat]++
+			}
+			continue // nothing reached the worker
+		}
 		mt.Calls++
+		if r.Kind == "baseline" {
+			mt.Baselines++
+			if r.Simulated {
+				mt.Simulated++
+			}
+			if r.ErrorCat == "" {
+				ms = append(ms, r.TookMS)
+			}
+			continue
+		}
 		if r.Simulated {
 			mt.Simulated++
 		}

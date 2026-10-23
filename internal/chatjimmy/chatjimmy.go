@@ -73,10 +73,47 @@ func Find() (*Client, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
+	// Reachable is enough to return a client; callers must check Ready()
+	// (or Heartbeat's ready flag) before treating it as able to answer.
 	if _, err := c.Heartbeat(ctx); err != nil {
 		return nil, err
 	}
 	return c, nil
+}
+
+// WorkerStatus is what the worker says about itself. Reading it never sends
+// anything to ChatJimmy.
+type WorkerStatus struct {
+	Ready     bool   `json:"provider_ready"`
+	State     string `json:"state"`
+	Mode      string `json:"mode"` // live | mock
+	Site      string `json:"url"`  // the chat page the worker drives
+	LastError string `json:"last_error"`
+}
+
+func (c *Client) Status(ctx context.Context) (WorkerStatus, error) {
+	var st WorkerStatus
+	req, _ := http.NewRequestWithContext(ctx, "GET", c.URL+"/api/status", nil)
+	if c.Token != "" {
+		req.Header.Set("X-Chat-Jimmy-Token", c.Token)
+	}
+	res, err := c.http().Do(req)
+	if err != nil {
+		return st, fmt.Errorf("%w: %v", ErrNotRunning, err)
+	}
+	defer res.Body.Close()
+	var raw struct {
+		WorkerStatus
+		LastError *string `json:"last_error"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&raw); err != nil {
+		return st, fmt.Errorf("%w: unexpected status reply", ErrNotRunning)
+	}
+	st = raw.WorkerStatus
+	if raw.LastError != nil {
+		st.LastError = *raw.LastError
+	}
+	return st, nil
 }
 
 // Heartbeat reports whether the worker is up and its chat page is ready.

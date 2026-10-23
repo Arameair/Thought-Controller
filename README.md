@@ -1,10 +1,19 @@
-# Thought Controller — first runnable version (v1)
+# Thought Controller — v1 repair prototype
 
-**Status: 🟢 runnable experiment** on `experiment/first-thoughts-v1-20261023` (built on the design-foundation branch; alpha untouched). Covers **Gate 1** (mock thoughts) and **Gate 2** (thoughts through an already-running Chat-Jimmy), plus a first, bounded look at Gates 3–5 (several thoughts, sleep/wake/expire, stale replies). **Nothing runs on its own and nothing is sent anywhere.**
+**Status: 🟢 runnable experiment** on `experiment/v1-repair-20261023` (from the v1 candidate; alpha untouched). It fixes every P0 and P1 item in the [repair notes](docs/V1_REPAIR_AND_FIRST_LIVE_TEST_2026-10-23.md). **[What was fixed, test by test →](docs/V1_REPAIR_RESULTS_2026-10-23.md)**
+
+What's different from v1:
+- **Busy guards.** While a beat runs, only **Add event** works; everything else says "a beat is running". **Stop** also stops a single Think once, and a late reply is discarded.
+- **Pending events.** An unreadable heartbeat **keeps your events pending** and stops a run instead of retrying.
+- **Readiness and source.** Each beat checks the worker is ready first (sends nothing), and records where the answer came from: **MOCK / TEST SITE / LIVE SITE**. Only the live site counts as real-model evidence.
+- **Evidence strip.** Each beat shows **ready → sent → reply → commands → applied → saved** and one outcome.
+- **Saving.** Save errors are shown, never hidden. Each branch gets its **own data folder** (shown under the title).
+- **Text handling.** Optional token covers reads too. **Copy diagnostic** leaves text out by default. Event text is quoted and can't act as a command.
+- **For the walk-through:** **Slow mock** (for testing Stop/STALE by hand) and **Ask directly** (one-shot baseline to compare against).
 
 ## Run it
 
-Project-controller → Arameair/Thought-Controller → this branch → **Play**. (Terminal: `go build -o thought-controller . && ./thought-controller`, page on `$PORT`, default 7792.)
+Project-controller → Arameair/Thought-Controller → this branch → **Play**. (Terminal: `go build -o thought-controller . && ./thought-controller [-data DIR] [-trace-text=false]`, page on `$PORT`, default 7792.) Data goes to `~/.thought-controller/branches/<branch>` unless you pass `-data`.
 
 For live thoughts, also **Play** Chat-Jimmy (`experiment/fast-clean-worker-20261023`) and pick **Chat-Jimmy (live)** at the top right. Thought Controller finds it through `~/.chat-jimmy/worker.json`. It never starts or stops it, and checking readiness never sends a prompt.
 

@@ -128,44 +128,107 @@ func TestGuardAndValidation(t *testing.T) {
 	}
 }
 
-// Chat-Jimmy path: found through worker.json, readiness never sends, one ask per beat.
-func TestChatJimmyWorker(t *testing.T) {
-	asks := 0
-	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// fakeJimmy is a stand-in Chat-Jimmy worker with a settable status.
+type fakeJimmy struct {
+	*httptest.Server
+	ready     bool
+	mode, url string
+	simulated bool
+	reply     string
+	asks      int
+	lastAsk   map[string]any
+}
+
+func newFakeJimmy(t *testing.T) *fakeJimmy {
+	f := &fakeJimmy{ready: true, mode: "live", url: "http://127.0.0.1:8768/", reply: "NEW: Why does Goldshire keep mattering?"}
+	f.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/heartbeat":
-			json.NewEncoder(w).Encode(map[string]any{"ok": true, "state": "ready"})
+			json.NewEncoder(w).Encode(map[string]any{"ok": f.ready, "state": map[bool]string{true: "ready", false: "starting"}[f.ready]})
+		case "/api/status":
+			json.NewEncoder(w).Encode(map[string]any{"provider_ready": f.ready, "state": map[bool]string{true: "ready", false: "starting"}[f.ready],
+				"mode": f.mode, "url": f.url, "last_error": nil})
 		case "/api/ask":
-			asks++
-			var in map[string]any
-			json.NewDecoder(r.Body).Decode(&in)
-			if in["source"] != "thought-controller" || in["new_chat"] != true || !strings.Contains(in["message"].(string), "Goldshire") {
-				t.Errorf("request %v", in)
-			}
-			json.NewEncoder(w).Encode(map[string]any{"status": "success", "response": "NEW: Why does Goldshire keep mattering?",
+			f.asks++
+			json.NewDecoder(r.Body).Decode(&f.lastAsk)
+			json.NewEncoder(w).Encode(map[string]any{"status": "success", "response": f.reply, "simulated": f.simulated,
 				"metrics": map[string]any{"wall_ms": 190, "first_text_ms": 140}})
 		}
 	}))
-	defer fake.Close()
+	t.Cleanup(f.Close)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
 	t.Setenv("CHAT_JIMMY_URL", "")
 	os.MkdirAll(filepath.Join(home, ".chat-jimmy"), 0o700)
-	os.WriteFile(filepath.Join(home, ".chat-jimmy", "worker.json"), []byte(`{"url":"`+fake.URL+`"}`), 0o600)
+	os.WriteFile(filepath.Join(home, ".chat-jimmy", "worker.json"), []byte(`{"url":"`+f.URL+`"}`), 0o600)
+	return f
+}
 
-	s, ts := newTestServer(t, &mockWorker{})
-	post(t, ts.URL+"/api/worker", map[string]any{"worker": "chat-jimmy"})
-	res, _ := http.Get(ts.URL + "/api/worker")
+func workerInfo(t *testing.T, ts *httptest.Server) map[string]any {
+	res, err := http.Get(ts.URL + "/api/worker")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var ws map[string]any
 	json.NewDecoder(res.Body).Decode(&ws)
-	if ws["ready"] != true || ws["simulated"] != false || asks != 0 {
-		t.Fatalf("readiness: %v asks %d", ws, asks)
+	return ws
+}
+
+// Found through worker.json; readiness never sends; one ask per beat; source labeled.
+func TestChatJimmyWorker(t *testing.T) {
+	f := newFakeJimmy(t)
+	s, ts := newTestServer(t, &mockWorker{})
+	post(t, ts.URL+"/api/worker", map[string]any{"worker": "chat-jimmy"})
+	ws := workerInfo(t, ts)
+	if ws["ready"] != true || ws["source"] != "test site http://127.0.0.1:8768/" || ws["simulated"] != true || f.asks != 0 {
+		t.Fatalf("readiness: %v asks %d", ws, f.asks)
 	}
 	post(t, ts.URL+"/api/event", map[string]any{"text": "I entered Goldshire"})
 	_, out := post(t, ts.URL+"/api/step", map[string]any{})
-	if asks != 1 || out["simulated"] == true || out["took_ms"].(float64) != 190 || len(s.mind.Thoughts) != 1 {
-		t.Fatalf("live step: asks %d out %v", asks, out)
+	if f.asks != 1 || out["source"] != "test site http://127.0.0.1:8768/" || out["took_ms"].(float64) != 190 || len(s.mind.Thoughts) != 1 {
+		t.Fatalf("step: asks %d out %v", f.asks, out)
+	}
+	if f.lastAsk["source"] != "thought-controller" || f.lastAsk["new_chat"] != true {
+		t.Fatalf("request %v", f.lastAsk)
+	}
+	if out["simulated"] != true {
+		t.Fatal("a test site is never real-model evidence")
+	}
+}
+
+func TestChatJimmyProvenance(t *testing.T) {
+	f := newFakeJimmy(t)
+	_, ts := newTestServer(t, &jimmyWorker{})
+	f.url = "https://chatjimmy.ai/"
+	if ws := workerInfo(t, ts); ws["source"] != "chatjimmy.ai live site" || ws["live"] != true || ws["simulated"] != false {
+		t.Fatalf("live: %v", ws)
+	}
+	f.mode = "mock"
+	if ws := workerInfo(t, ts); ws["source"] != "chat-jimmy mock" || ws["simulated"] != true {
+		t.Fatalf("mock: %v", ws)
+	}
+	// a worker that says live but returns a simulated reply is still marked simulated
+	f.mode, f.simulated = "live", true
+	post(t, ts.URL+"/api/event", map[string]any{"text": "hello"})
+	_, out := post(t, ts.URL+"/api/step", map[string]any{})
+	if out["simulated"] != true {
+		t.Fatalf("simulated reply flag lost: %v", out)
+	}
+}
+
+func TestChatJimmyNotReadyNeverSends(t *testing.T) {
+	f := newFakeJimmy(t)
+	f.ready = false
+	s, ts := newTestServer(t, &jimmyWorker{})
+	post(t, ts.URL+"/api/event", map[string]any{"text": "hello"})
+	_, out := post(t, ts.URL+"/api/step", map[string]any{})
+	st := out["stages"].(map[string]any)
+	if f.asks != 0 || out["outcome"] != "not ready" || st["sent"] != "no" || s.mind.LastSeenRev != 0 {
+		t.Fatalf("asks %d out %v", f.asks, out)
+	}
+	if ws := workerInfo(t, ts); ws["ready"] != false {
+		t.Fatalf("%v", ws)
 	}
 }
 
@@ -177,7 +240,7 @@ func TestChatJimmyNotRunning(t *testing.T) {
 	s, ts := newTestServer(t, &jimmyWorker{})
 	post(t, ts.URL+"/api/thought", map[string]any{"question": "anything"})
 	_, out := post(t, ts.URL+"/api/step", map[string]any{})
-	if out["error_cat"] != "unavailable" || s.mind.byID(1).State != stActive {
+	if out["error_cat"] != "unavailable" || out["outcome"] != "not ready" || s.mind.byID(1).State != stActive {
 		t.Fatalf("%v", out)
 	}
 }

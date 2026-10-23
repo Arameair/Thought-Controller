@@ -16,18 +16,23 @@ header,.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 h1{font-size:20px;margin:0 8px 0 0}h2{font-size:14px;margin:0 0 8px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.04em}
 .pill{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);background:var(--panel)}
 .pill.sim{color:var(--warn);border-color:var(--warn)}.pill.ok{color:var(--active);border-color:var(--active)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+.pill.live{color:#fff;background:var(--active);border-color:var(--active)}
 .spacer{flex:1}
+.sub{font-size:11px;color:var(--muted);margin-top:4px}
+.banner{margin-top:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--bad);color:var(--bad);font-size:13px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
-input[type=text],select,textarea{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+input[type=text],input[type=password],select{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
 input[type=text]{flex:1;min-width:200px}
 button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
 button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:650}
+button.stop{border-color:var(--bad);color:var(--bad);font-weight:650}
 button.small{padding:2px 8px;font-size:12px}
-.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:12px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:12px}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 .board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 @media(max-width:860px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.board{grid-template-columns:1fr}}
 .col h3{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
 .col.active h3{color:var(--active)}.col.dormant h3{color:var(--dormant)}.col.resolved h3{color:var(--resolved)}.col.expired h3{color:var(--expired)}
 .card{border:1px solid var(--line);border-left:3px solid var(--expired);border-radius:8px;padding:8px 9px;margin-bottom:8px;background:var(--bg)}
@@ -36,14 +41,18 @@ button.small{padding:2px 8px;font-size:12px}
 .card .n{font-size:12px;color:var(--muted);margin:2px 0}.card .c{font-size:12px;margin-top:4px}
 .card.hl{outline:2px solid var(--accent)}
 .empty{font-size:12px;color:var(--muted)}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
 .tile{border:1px solid var(--line);border-radius:8px;padding:8px 10px}.tile b{display:block;font-size:18px;font-variant-numeric:tabular-nums}.tile span{font-size:11px;color:var(--muted)}
 .beat{border-bottom:1px solid var(--line);padding:8px 0}.beat:last-child{border:0}
 .beat .head{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
 .beat .k{font-weight:650}.beat .why{color:var(--muted);font-size:12px}
-.tag{font-size:11px;border-radius:4px;padding:0 5px;border:1px solid currentColor}
-.tag.stale{color:var(--warn)}.tag.err{color:var(--bad)}.tag.sim{color:var(--warn)}.tag.mal{color:var(--bad)}
-ul.ch{margin:4px 0 0;padding-left:18px;font-size:12px}ul.ch li.ok{color:var(--active)}ul.ch li.no{color:var(--muted)}ul.ch li.lc{color:var(--dormant)}
+.tag{font-size:11px;border-radius:4px;padding:0 5px;border:1px solid currentColor;white-space:nowrap}
+.tag.applied{color:var(--active)}.tag.nothing,.tag.baseline{color:var(--resolved)}.tag.stale,.tag.sim,.tag.cancelled{color:var(--warn)}
+.tag.err,.tag.unreadable,.tag.rejected,.tag.notready{color:var(--bad)}.tag.live{color:var(--active)}
+.stages{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.st{font-size:11px;border-radius:4px;padding:1px 6px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.st.y{color:var(--active);border-color:var(--active)}.st.n{color:var(--bad);border-color:var(--bad)}.st.u{color:var(--warn);border-color:var(--warn)}
+ul.ch{margin:4px 0 0;padding-left:18px;font-size:12px}ul.ch li.ok{color:var(--active)}ul.ch li.no{color:var(--muted)}ul.ch li.lc{color:var(--dormant)}ul.ch li.warn{color:var(--warn)}
 details{margin-top:4px}summary{cursor:pointer;font-size:12px;color:var(--accent)}
 pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border-radius:6px;padding:8px;margin:4px 0;max-height:260px;overflow:auto}
 .ev{font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line)}.ev .r{color:var(--muted);font-variant-numeric:tabular-nums}
@@ -52,9 +61,10 @@ pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflo
 .say .meta{font-size:11px;color:var(--muted)}
 .settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:8px}
 .settings label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
-.settings input{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+.settings input,.settings select{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
 .note{font-size:12px;color:var(--muted)}
-.msg{font-size:12px;color:var(--bad);min-height:1em}
+.msg{font-size:12px;color:var(--bad);min-height:1em;margin-top:6px}
+a{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -64,17 +74,21 @@ pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflo
  <span class="pill" id="workerPill">…</span>
  <span class="pill" id="beatPill">beat 0</span>
  <span class="pill" id="revPill">revision 0</span>
+ <span class="pill" id="thoughtPill">0 thoughts</span>
  <span class="pill" id="runPill" hidden></span>
  <span class="spacer"></span>
  <select id="workerSel" title="Which worker thinks">
   <option value="mock">Mock worker (simulated)</option>
-  <option value="chat-jimmy">Chat-Jimmy (live)</option>
+  <option value="mock-slow">Slow mock, 4 s (for testing Stop / STALE)</option>
+  <option value="chat-jimmy">Chat-Jimmy</option>
  </select>
 </header>
+<div class="sub" id="buildLine"></div>
+<div class="banner" id="saveBanner" hidden></div>
 
 <div class="panel">
  <div class="row">
-  <input type="text" id="eventText" placeholder="Something happened… e.g. “I entered Goldshire again.”">
+  <input type="text" id="eventText" placeholder="Something happened… e.g. “I entered Goldshire again.” (allowed even while thinking)">
   <button id="addEvent">Add event</button>
  </div>
  <div class="row" style="margin-top:8px">
@@ -85,16 +99,18 @@ pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflo
   <button class="primary" id="step">Think once</button>
   <button id="run5">Run 5 beats</button>
   <button id="runMax">Run 20 beats</button>
-  <button id="stop" hidden>Stop</button>
+  <button id="stop" class="stop" hidden>Stop</button>
   <span class="spacer"></span>
+  <button id="copyDiag" class="small" title="A summary to paste into an issue; leaves out event text, questions, prompts and replies">Copy diagnostic</button>
+  <label class="note"><input type="checkbox" id="diagText"> include text</label>
   <button id="toggleSettings" class="small">Settings</button>
   <button id="reset" class="small">Reset</button>
  </div>
  <div class="msg" id="msg"></div>
- <p class="note" style="margin:4px 0 0">Each beat makes <b>at most one</b> worker call: a <b>heartbeat</b> if there are new events, otherwise <b>work</b> on the active thought that's waited longest. If there's nothing to think about, it stops without calling. Nothing runs unless you press a button, and nothing is ever sent anywhere.</p>
+ <p class="note" style="margin:4px 0 0">Each beat first checks the worker is ready (sends nothing), then makes <b>at most one</b> call: a <b>heartbeat</b> if there are new events, otherwise <b>work</b> on the active thought that has waited longest. With nothing to think about there's no call. Nothing runs unless you press a button. Nothing is ever sent anywhere. Thought conclusions are the model's <b>proposals</b>, not checked facts.</p>
  <div id="settingsBox" hidden>
   <div class="settings" id="settings"></div>
-  <div class="row" style="margin-top:8px"><button id="saveSettings" class="small">Save settings</button><span class="note">Settings are recorded with every beat, so runs can be compared.</span></div>
+  <div class="row" style="margin-top:8px"><button id="saveSettings" class="small">Save settings</button><span class="note">Recorded with every beat, so runs can be compared.</span></div>
  </div>
 </div>
 
@@ -105,7 +121,7 @@ pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflo
 
 <div class="grid2">
  <div class="panel">
-  <div class="row"><h2 style="margin:0">Timeline</h2><span class="spacer"></span><a href="/api/trace.jsonl" download class="note">Download trace</a></div>
+  <div class="row"><h2 style="margin:0">Timeline</h2><span class="spacer"></span><a href="#" id="dlTrace" class="note">Download trace</a></div>
   <div id="trace"></div>
  </div>
  <div>
@@ -128,52 +144,76 @@ pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflo
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const ms=v=>v==null?'—':v>=1000?(v/1000).toFixed(2)+' s':v+' ms';
-let state=null, hl=0, settingsLoaded=false;
-async function get(p){const r=await fetch(p,{cache:'no-store'});return r.json()}
+const ms=v=>v==null||v===0?'—':v>=1000?(v/1000).toFixed(2)+' s':v+' ms';
+let state=null, hl=0, settingsLoaded=false, token='';
+try{token=localStorage.getItem('tc-token')||''}catch{}
+function hdr(extra){const h=Object.assign({},extra||{});if(token)h['X-Thought-Token']=token;return h}
+async function askToken(){
+ const t=prompt('This Thought Controller needs its access token (THOUGHT_CONTROLLER_TOKEN):');
+ if(t){token=t;try{localStorage.setItem('tc-token',t)}catch{}}
+}
+async function get(p){
+ let r=await fetch(p,{cache:'no-store',headers:hdr()});
+ if(r.status===401){await askToken();r=await fetch(p,{cache:'no-store',headers:hdr()})}
+ return r;
+}
+async function getJSON(p){return (await get(p)).json()}
 async function post(p,b){
- const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+ const r=await fetch(p,{method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(b||{})});
+ if(r.status===401){await askToken();return post(p,b)}
  const j=await r.json().catch(()=>({error:'bad reply'}));
  if(!r.ok&&j.error)throw new Error(j.error);
  return j;
 }
 function flash(t,bad=true){$('msg').textContent=t||'';$('msg').style.color=bad?'':'var(--active)'}
 
-function card(t){
- const notes=(t.notes||[]).slice(-2).map(n=>`<div class="n">• ${esc(n.text)}</div>`).join('');
- const btns=t.state==='active'?`<button class="small" data-act="dormant" data-id="${t.id}">Sleep</button> <button class="small" data-act="resolved" data-id="${t.id}">Resolve</button>`
-  :t.state==='dormant'?`<button class="small" data-act="active" data-id="${t.id}">Wake</button> <button class="small" data-act="resolved" data-id="${t.id}">Resolve</button>`:'';
+function card(t,busy){
+ const notes=t.notes||[];
+ const last=notes.slice(-2).map(n=>`<div class="n">• ${esc(n.text)}</div>`).join('');
+ const all=notes.length>2?`<details><summary>all ${notes.length} notes</summary>${notes.map(n=>`<div class="n">beat ${n.beat}: ${esc(n.text)}</div>`).join('')}</details>`:'';
+ const dis=busy?' disabled':'';
+ const btns=(t.state==='active'?`<button class="small" data-act="dormant" data-id="${t.id}"${dis}>Sleep</button> <button class="small" data-act="resolved" data-id="${t.id}"${dis}>Resolve</button>`
+  :t.state==='dormant'?`<button class="small" data-act="active" data-id="${t.id}"${dis}>Wake</button> <button class="small" data-act="resolved" data-id="${t.id}"${dis}>Resolve</button>`:'')
+  +` <button class="small" data-base="${t.id}"${dis} title="Ask this question once, directly, to compare with developing it over beats">Ask directly</button>`;
  return `<div class="card ${t.state}${t.id===hl?' hl':''}" id="card-${t.id}">
-  <div class="meta">t-${t.id}${t.parent?` · follow-up of <a href="#card-${t.parent}" data-hl="${t.parent}">t-${t.parent}</a>`:''} · from ${esc(t.origin)} · worked ${t.total_work||0}×${t.activations?` · woken ${t.activations}×`:''}</div>
-  <div class="q">${esc(t.question)}</div>${notes}
-  ${t.conclusion?`<div class="c"><b>→</b> ${esc(t.conclusion)}</div>`:''}
-  ${btns?`<div style="margin-top:5px">${btns}</div>`:''}</div>`;
+  <div class="meta">t-${t.id}${t.parent?` · follow-up of <a href="#card-${t.parent}" data-hl="${t.parent}">t-${t.parent}</a>`:''} · from ${esc(t.origin)} · worked ${t.total_work||0}×${t.activations?` · woken ${t.activations}×`:''} · changed beat ${t.last_beat}</div>
+  <div class="q">${esc(t.question)}</div>${last}${all}
+  ${t.conclusion?`<div class="c"><b>→ proposed:</b> ${esc(t.conclusion)}</div>`:''}
+  <div style="margin-top:5px">${btns}</div></div>`;
 }
-function renderBoard(ts){
+function renderBoard(ts,busy){
  const cols={active:[],dormant:[],resolved:[],expired:[]};
  for(const t of ts)(cols[t.state]||cols.expired).push(t);
  cols.resolved.reverse();cols.expired.reverse();
- $('board').innerHTML=Object.entries(cols).map(([k,v])=>`<div class="col ${k}"><h3>${k} (${v.length})</h3>${v.length?v.slice(0,12).map(card).join(''):'<div class="empty">—</div>'}</div>`).join('');
+ $('board').innerHTML=Object.entries(cols).map(([k,v])=>`<div class="col ${k}"><h3>${k} (${v.length})</h3>${v.length?v.slice(0,12).map(t=>card(t,busy)).join(''):'<div class="empty">—</div>'}</div>`).join('');
 }
 function renderTiles(m){
+ const o=m.outcomes||{};
  const tiles=[['Beats',m.beats],['Worker calls',m.calls],['Median call',ms(m.median_ms)],['95th pct',ms(m.p95_ms)],
-  ['Thoughts made',m.created],['Changes applied',m.applied],['Rejected',m.rejected],['Unreadable replies',m.malformed],['Stale replies',m.stale],
-  ['Errors',Object.values(m.errors||{}).reduce((a,b)=>a+b,0)],['Would say',m.says]];
+  ['Applied',o.applied||0],['Said NOTHING',o.nothing||0],['All rejected',o['all rejected']||0],['Unreadable',o.unreadable||0],
+  ['Stale',o.stale||0],['Cancelled',o.cancelled||0],['Not ready',o['not ready']||0],['Errors',o.error||0],
+  ['Thoughts made',m.created],['Would say',m.says],['Baselines',m.baselines||0]];
  $('tiles').innerHTML=tiles.map(([k,v])=>`<div class="tile"><b>${v}</b><span>${k}</span></div>`).join('');
  const r=Object.entries(m.reject_reasons||{}).map(([k,v])=>`${k} ${v}`).join(' · ');
- $('reasons').textContent=(r?'Rejected because: '+r+'. ':'')+(m.simulated_calls?`${m.simulated_calls} of ${m.calls} calls were simulated (mock).`:'');
+ $('reasons').textContent=(r?'Rejected lines: '+r+'. ':'')+(m.calls?`${m.simulated_calls} of ${m.calls} calls were simulated or answered by a test site (not real-model evidence).`:'');
+}
+const outcomeTag=o=>{const c={applied:'applied',nothing:'nothing','all rejected':'rejected',unreadable:'unreadable',stale:'stale',cancelled:'cancelled','not ready':'notready',error:'err','baseline answer':'baseline'}[o]||'';return o?`<span class="tag ${c}">${esc(o)}</span>`:''};
+function stageStrip(b){
+ const g=b.stages;if(!g)return'';
+ const s=(ok,label,cls)=>`<span class="st ${cls||(ok?'y':'n')}">${label}</span>`;
+ return `<div class="stages">${s(g.ready,g.ready?'ready ✓':'not ready')}${s(g.sent==='yes',g.sent==='yes'?'sent ✓':g.sent==='no'?'not sent':'sent ?',g.sent==='unknown'?'u':null)}${g.sent==='no'?'':s(g.replied,g.replied?'reply ✓':'no reply')}${g.replied&&b.kind!=='baseline'?s(g.commands>0,g.commands+' command'+(g.commands===1?'':'s'),g.commands>0?'y':(b.parsed&&b.parsed.nothing?'':'n')):''}${g.replied&&b.kind!=='baseline'?s(g.accepted>0,g.accepted+' applied',g.accepted>0?'y':''):''}${s(!b.save_error,b.save_error?'NOT saved':'saved ✓')}</div>`;
 }
 function renderTrace(tr){
  $('trace').innerHTML=tr.length?tr.map(b=>{
-  if(b.kind==='owner')return `<div class="beat"><div class="head"><span class="why">✋ ${esc(b.why)}</span></div></div>`;
-  const tags=[b.simulated?'<span class="tag sim">SIMULATED</span>':'',b.stale?'<span class="tag stale">STALE</span>':'',
-   b.error_cat?`<span class="tag err">${esc(b.error_cat)}</span>`:'',b.malformed?'<span class="tag mal">unreadable</span>':''].join(' ');
+  if(b.kind==='owner')return `<div class="beat"><div class="head"><span class="why">✋ ${esc(b.why)}</span>${b.save_error?'<span class="tag err">not saved</span>':''}</div></div>`;
+  const src=b.source?`<span class="tag ${b.simulated?'sim':'live'}">${esc(b.source)}${b.simulated?' · simulated':''}</span>`:'';
   const li=(a,c)=>(a||[]).map(x=>`<li class="${c}">${esc(x)}</li>`).join('');
-  const parsedNothing=b.parsed&&b.parsed.nothing&&!(b.applied||[]).length;
-  return `<div class="beat"><div class="head"><span class="k">Beat ${b.beat} · ${b.kind}${b.focus?' t-'+b.focus:''}</span>
-   <span class="why">${ms(b.took_ms)} · rev ${b.rev_before}${b.rev_after!==b.rev_before?'→'+b.rev_after:''} · ${esc(b.why)}</span> ${tags}</div>
-   <ul class="ch">${li(b.applied,'ok')}${li(b.rejected,'no')}${li(b.changes,'lc')}${parsedNothing?'<li class="no">worker said NOTHING</li>':''}${b.error?`<li class="no">${esc(b.error)}</li>`:''}</ul>
-   <details><summary>what the worker saw and said</summary><pre>${esc(b.prompt)}</pre><pre>${esc(b.reply||'(no reply)')}</pre>${b.parsed&&b.parsed.ignored?`<div class="note">Ignored lines: ${esc(b.parsed.ignored.join(' | '))}</div>`:''}</details></div>`;
+  const title=b.kind==='baseline'?`Baseline · t-${b.focus}`:`Beat ${b.beat} · ${b.kind}${b.focus?' t-'+b.focus:''}`;
+  return `<div class="beat"><div class="head"><span class="k">${title}</span>
+   <span class="why">${ms(b.took_ms)} · rev ${b.rev_before}${b.rev_after!==b.rev_before?'→'+b.rev_after:''} · ${esc(b.why)}</span> ${outcomeTag(b.outcome)} ${src}</div>
+   ${stageStrip(b)}
+   <ul class="ch">${li(b.applied,'ok')}${li(b.rejected,'no')}${li(b.changes,'lc')}${b.parsed&&b.parsed.nothing&&!(b.applied||[]).length?'<li class="no">worker said NOTHING</li>':''}${b.error?`<li class="no">${esc(b.error)}</li>`:''}${b.pending?`<li class="warn">${esc(b.pending)} — press Think once to retry</li>`:''}${b.save_error?`<li class="no">not saved: ${esc(b.save_error)}</li>`:''}</ul>
+   <details><summary>what the worker saw and said${b.request_id?' · '+esc(b.request_id):''}</summary><pre>${esc(b.prompt)}</pre><pre>${esc(b.reply||'(no reply)')}</pre>${b.parsed&&b.parsed.ignored?`<div class="note">Ignored lines: ${esc(b.parsed.ignored.join(' | '))}</div>`:''}</details></div>`;
  }).join(''):'<div class="empty">Nothing yet. Add an event, then press Think once.</div>';
 }
 function renderSettings(s){
@@ -186,36 +226,41 @@ function renderSettings(s){
 }
 async function refresh(){
  try{
-  state=await get('/api/state');
-  const tr=await get('/api/trace?n=40');
+  state=await getJSON('/api/state');
+  const tr=await getJSON('/api/trace?n=40');
   $('beatPill').textContent='beat '+state.beat;
-  $('revPill').textContent='revision '+state.rev+(state.rev>state.last_seen_rev?` (${state.rev-state.last_seen_rev} unseen)`:'');
+  $('revPill').textContent='revision '+state.rev+(state.rev>state.last_seen_rev?` (${state.rev-state.last_seen_rev} pending)`:'');
+  const ts=state.thoughts||[];
+  $('thoughtPill').textContent=`${ts.length} thoughts · ${ts.filter(t=>t.state==='active').length} active`;
   $('workerSel').value=state.worker;
+  $('buildLine').textContent=`branch ${state.branch} @ ${(state.commit||'').slice(0,8)} · data ${state.data_dir}${state.trace_text?'':' · prompts/replies not kept'}`;
+  $('saveBanner').hidden=!state.save_error;$('saveBanner').textContent='⚠ Not saved: '+state.save_error;
   const run=state.run||{};
   $('runPill').hidden=!run.running&&!run.stopped;
   $('runPill').textContent=run.running?`running ${run.done}/${run.planned}`:run.stopped?`last run: ${run.stopped}`:'';
-  const busy=run.running||state.busy;
-  for(const id of ['step','run5','runMax','reset','workerSel'])$(id).disabled=busy;
-  $('stop').hidden=!run.running;
-  renderBoard(state.thoughts||[]);renderTiles(state.metrics);renderTrace(tr.trace||[]);
-  $('says').innerHTML=(state.says||[]).length?state.says.slice().reverse().map(s=>`<div class="say">${esc(s.text)}<div class="meta">beat ${s.beat}${s.thought?' · from t-'+s.thought:''}</div></div>`).join(''):'<div class="empty">Nothing yet.</div>';
-  $('events').innerHTML=(state.events||[]).length?state.events.slice().reverse().map(e=>`<div class="ev${e.rev>state.last_seen_rev?' new':''}"><span class="r">e-${e.id} · rev ${e.rev}${e.rev>state.last_seen_rev?' · not seen yet':''}</span> ${esc(e.text)}</div>`).join(''):'<div class="empty">No events yet.</div>';
+  const busy=!!(run.running||state.busy);
+  for(const id of ['step','run5','runMax','reset','workerSel','addThought','saveSettings'])$(id).disabled=busy;
+  $('stop').hidden=!busy;
+  renderBoard(ts,busy);renderTiles(state.metrics);renderTrace(tr.trace||[]);
+  $('says').innerHTML=(state.says||[]).length?state.says.slice().reverse().map(s=>`<div class="say">${esc(s.text)}<div class="meta">beat ${s.beat}${s.thought?' · from t-'+s.thought:''} · never sent</div></div>`).join(''):'<div class="empty">Nothing yet.</div>';
+  $('events').innerHTML=(state.events||[]).length?state.events.slice().reverse().map(e=>`<div class="ev${e.rev>state.last_seen_rev?' new':''}"><span class="r">e-${e.id} · rev ${e.rev}${e.rev>state.last_seen_rev?' · pending':''}</span> ${esc(e.text)}</div>`).join(''):'<div class="empty">No events yet.</div>';
   if(!settingsLoaded){renderSettings(state.settings);settingsLoaded=true}
  }catch(e){flash('Lost contact with the controller: '+e)}
 }
 async function workerStatus(){
  try{
-  const w=await get('/api/worker');
+  const w=await getJSON('/api/worker');
   const p=$('workerPill');
-  p.textContent=w.simulated?'Mock worker · SIMULATED':(w.ready?'Chat-Jimmy ready':'Chat-Jimmy not ready');
-  p.className='pill '+(w.simulated?'sim':w.ready?'ok':'bad');p.title=w.detail;
+  const label=w.live?'LIVE SITE':w.source.startsWith('test site')?'TEST SITE':w.source.includes('mock')?'MOCK':w.source;
+  p.textContent=`${w.worker} · ${label} · ${w.ready?'ready':'not ready'}`;
+  p.className='pill '+(!w.ready?'bad':w.live?'live':'sim');p.title=w.detail;
  }catch{}
 }
 $('addEvent').onclick=async()=>{const t=$('eventText').value.trim();if(!t)return;try{await post('/api/event',{text:t});$('eventText').value='';flash('')}catch(e){flash(e.message)}refresh()};
 $('eventText').onkeydown=e=>{if(e.key==='Enter')$('addEvent').click()};
 $('addThought').onclick=async()=>{const t=$('thoughtText').value.trim();if(!t)return;try{await post('/api/thought',{question:t});$('thoughtText').value='';flash('')}catch(e){flash(e.message)}refresh()};
 $('thoughtText').onkeydown=e=>{if(e.key==='Enter')$('addThought').click()};
-$('step').onclick=async()=>{$('step').disabled=true;try{const r=await post('/api/step',{});flash(r.nothing?r.detail:r.error?('Worker: '+r.error):'',!!r.error)}catch(e){flash(e.message)}refresh()};
+$('step').onclick=async()=>{$('step').disabled=true;setTimeout(refresh,150);try{const r=await post('/api/step',{});flash(r.nothing?r.detail:r.error?('Worker: '+r.error):r.pending?r.pending+' — press Think once to retry':'',!!(r.error||r.pending))}catch(e){flash(e.message)}refresh()};
 $('run5').onclick=async()=>{try{await post('/api/run',{beats:5});flash('')}catch(e){flash(e.message)}refresh()};
 $('runMax').onclick=async()=>{try{await post('/api/run',{beats:20});flash('')}catch(e){flash(e.message)}refresh()};
 $('stop').onclick=async()=>{await post('/api/stop',{});refresh()};
@@ -226,11 +271,23 @@ $('saveSettings').onclick=async()=>{
  const s={};for(const k of ['max_active','max_new_per_beat','max_depth','max_work_per_thought','dormant_after','expire_after','max_run_beats','gap_ms'])s[k]=+$('s_'+k).value;
  s.fresh_chat=$('s_fresh_chat').value==='true';s.identity=$('s_identity').value;
  try{await post('/api/settings',s);flash('Settings saved.',false)}catch(e){flash(e.message)}refresh()};
+$('copyDiag').onclick=async()=>{
+ const t=await (await get('/api/diagnostic'+($('diagText').checked?'?text=1':''))).text();
+ try{await navigator.clipboard.writeText(t);flash('Diagnostic copied'+($('diagText').checked?' (with text).':' (no event text, questions, prompts or replies).'),false)}
+ catch{const w=window.open('','_blank');if(w){w.document.body.innerText=t}else flash('Copy blocked by the browser')}
+};
+$('dlTrace').onclick=async e=>{
+ e.preventDefault();
+ const b=await (await get('/api/trace.jsonl')).blob();
+ const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='thought-trace.jsonl';a.click();URL.revokeObjectURL(a.href);
+};
 document.addEventListener('click',async e=>{
  const b=e.target.closest('button[data-act]');
  if(b){let note='';if(b.dataset.act==='resolved')note=prompt('Conclusion (optional):')||'';
   try{await post('/api/thought/state',{id:+b.dataset.id,state:b.dataset.act,note})}catch(err){flash(err.message)}refresh();return}
- const a=e.target.closest('a[data-hl]');if(a){hl=+a.dataset.hl;renderBoard(state.thoughts||[])}
+ const bb=e.target.closest('button[data-base]');
+ if(bb){bb.disabled=true;setTimeout(refresh,150);try{const r=await post('/api/thought/baseline',{id:+bb.dataset.base});flash(r.error?'Worker: '+r.error:'Direct answer recorded in the timeline (nothing changed).',!!r.error)}catch(err){flash(err.message)}refresh();return}
+ const a=e.target.closest('a[data-hl]');if(a){hl=+a.dataset.hl;renderBoard(state.thoughts||[],false)}
 });
 refresh();workerStatus();setInterval(refresh,1000);setInterval(workerStatus,5000);
 </script>
