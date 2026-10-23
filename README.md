@@ -1,6 +1,55 @@
-# Thought Controller — design foundation
+# Thought Controller — first runnable version (v1)
 
-**Status: 🟡 DESIGN ONLY. No Thought Controller executable exists. Nothing runs automatically.**
+**Status: 🟢 runnable experiment** on `experiment/first-thoughts-v1-20261023` (built on the design-foundation branch; alpha untouched). Covers **Gate 1** (mock thoughts) and **Gate 2** (thoughts through an already-running Chat-Jimmy), plus a first, bounded look at Gates 3–5 (several thoughts, sleep/wake/expire, stale replies). **Nothing runs on its own and nothing is sent anywhere.**
+
+## Run it
+
+Project-controller → Arameair/Thought-Controller → this branch → **Play**. (Terminal: `go build -o thought-controller . && ./thought-controller`, page on `$PORT`, default 7792.)
+
+For live thoughts, also **Play** Chat-Jimmy (`experiment/fast-clean-worker-20261023`) and pick **Chat-Jimmy (live)** at the top right. Thought Controller finds it through `~/.chat-jimmy/worker.json`. It never starts or stops it, and checking readiness never sends a prompt.
+
+## How it works
+
+- **Events** are things that happened ("I entered Goldshire again."). Each one bumps the **context revision**.
+- **Thoughts** are records with an ID, the question, where they came from (event, owner, or a parent thought), notes, a conclusion and a state: **active → dormant → expired**, or **resolved**.
+- **Beat:** at most **one** worker call.
+  - **Heartbeat** when there are new events: the worker reads the events and current thoughts and proposes changes.
+  - Otherwise **work** on the active thought that has waited longest, moving it one step.
+  - With nothing to think about, there's no call.
+- **Worker reply:** the worker answers in short lines (`NEW:`, `WAKE t-3:`, `NOTE:`, `RESOLVE:`, `SLEEP`, `SAY:`, `NOTHING`). The controller checks every line before anything changes, rejects what breaks a rule, and says why.
+- **Rules** (adjustable in **Settings** and recorded with every beat):
+  - Max 5 active thoughts and 2 new per beat.
+  - Follow-up depth 2.
+  - A thought sleeps after 6 work beats without resolving.
+  - Idle 8 beats → dormant; 30 → expired.
+  - Duplicate questions are refused.
+- **Stale replies:** if an event arrives while the worker is thinking, its reply is marked **STALE** and nothing from it is applied. The next beat is a heartbeat that includes the new event.
+- **SAY lines** go to **Would say (never sent)**. No messages, clicks or file changes, ever.
+- **Buttons:** **Think once** (one beat), **Run 5 / Run 20** (stops early when there's nothing left), **Stop**, and Sleep / Wake / Resolve on any thought.
+- **Saved data:** `~/.thought-controller/state.json` and `trace.jsonl` (every beat, including the exact prompt and reply) survive restarts. **Reset** keeps the old trace file.
+
+## Try this first
+
+1. Mock worker: add "I entered Goldshire again.", then **Run 20 beats**. Watch thoughts get created, worked and resolved. Everything is labeled SIMULATED.
+2. Switch to Chat-Jimmy, **Reset**, and repeat. Open "what the worker saw and said" on a few beats. **Unreadable replies** and **Rejected** show how well an 8B model follows the format.
+3. Put a resolved or active thought to sleep, then add a related event. Does the heartbeat wake it?
+4. Start a thought ("What should I work on next?"). While a run is going, add "I no longer want the feature." and look for **STALE**.
+5. Try **Settings → Fresh chat each call** on and off, and fill in **About the companion**. Compare the numbers.
+
+## Tested here (before your first run)
+
+| Check | Result |
+|---|---|
+| 13 Go tests: parser (sloppy replies, commands after chatter), heartbeat → work → resolve, budgets, duplicates, depth, work limit, stale reply not applied, busy, idle → dormant → expired, wake, errors not retried, persistence/reset, run cap + Stop, request guard | PASS |
+| Chat-Jimmy client against a fake worker: found via worker.json, readiness sends nothing, one ask per beat, "not running" categorized | PASS |
+| **Full chain:** Thought Controller → real Chat-Jimmy worker (fast-clean) → headless Chrome → fake chat site with a sloppy bot. Event → 2 thoughts → worked → resolved in 7 beats; sleep + related event → woken + a would-say line; ~205 ms per beat; 0 unreadable after the parser fix; clean Stop | PASS |
+| Real chatjimmy.ai answering in this format | **NOT TESTED**. That's your first live run |
+
+That full-chain run found a real problem first: work replies like "Let me think. NOTE: …" were all unreadable, because commands were only recognized at the start of a line. Fixed, with a test.
+
+# Design foundation (unchanged)
+
+*The design notes below are as reviewed. v1 above implements Gates 1–2 and a bounded first look at 3–5.*
 
 > The goal is to experiment with a companion that has ongoing internal activity: multiple thoughts can fire, develop, influence one another, become dormant, and resume. A fast LLM is a candidate heartbeat/interpretation worker. The controller manages the machinery; intelligence, if useful behavior develops, would come from the system working together rather than from one central prompt.
 

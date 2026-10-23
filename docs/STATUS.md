@@ -1,9 +1,9 @@
 # Project status and experiment journal
 
 **Last reviewed:** 2026-10-23 (design preparation)  
-**Overall:** 🟡 Design only — no running Thought Controller, no model calls from this repository.  
-**Owner approval:** pending.  
-**Next decision:** review the design and decide whether to authorize Gate 1 (mock-only, one-thought test).
+**Overall:** 🟢 v1 runnable on `experiment/first-thoughts-v1-20261023` — owner-triggered beats only, mock or live Chat-Jimmy.  
+**Owner approval:** pending (owner asked for a first version to start testing, 2026-10-23).  
+**Next decision:** owner's first live run with Chat-Jimmy; decide what to keep, change or drop.
 
 ## Current state, at a glance
 
@@ -11,17 +11,40 @@
 | --- | --- | --- |
 | Repository setup | ✅ Bootstrapped | `main` and `alpha` exist |
 | Design notes | 🟡 Proposed | this experimental branch, pending owner review |
-| Thought Controller executable | ⚪ Not started | none |
-| First mock thought | ⚪ Not tested | Gate 1 |
-| Chat-Jimmy connection | ⚪ Not connected | Gate 2 |
-| Three interacting thoughts | ⚪ Not tested | Gate 3 |
-| Continuous heartbeat | ⚪ Not enabled | Gate 4 |
+| Thought Controller executable | ✅ v1 | Go app + `marquee.json`, builds on Linux and Windows |
+| First mock thought | ✅ Tested here | Go tests + mock runs (SIMULATED) |
+| Chat-Jimmy connection | 🟡 Works end to end against a fake site | real worker → headless Chrome → fake chat site; real chatjimmy.ai not yet |
+| Several interacting thoughts | 🟡 First version | follow-ups, wake on related events, budgets; usefulness not measured |
+| Lifetimes (sleep / wake / expire) | 🟡 First version | idle-beat rules, adjustable; values are guesses to test |
+| Stale replies when context changes | ✅ Tested here | Go test: reply discarded, next heartbeat includes the change |
+| Continuous heartbeat | ⚪ Not enabled | only owner-pressed runs of ≤ 20 beats |
 | Communication Bridge / ScreenBridge | ⚪ Not connected | Gate 6 |
 | Identity / memory / curiosity modules | ⚪ Not built here | Gate 7 |
 
 Legend: ✅ demonstrated from available evidence; 🟡 proposed/in review; ⚪ not started; 🔴 failed/blocked when observed. A project being reachable is not the same as a capability passing its experiment.
 
 ## Journal
+
+### 2026-10-23 — v1: first runnable thoughts
+
+**Branch:** `experiment/first-thoughts-v1-20261023` (from design-foundation; alpha untouched).
+
+**What changed:**
+- A standalone Go app with a timeline page.
+- Events with context revisions; thought records with active / dormant / resolved / expired states.
+- Beats with at most one worker call: a heartbeat when there are new events, otherwise work on the longest-waiting active thought.
+- A strict line format with every line validated. Budgets, duplicate refusal, follow-up depth, a work limit, idle aging and stale-reply rejection.
+- Owner controls: Think once, Run 5/20, Stop, Sleep/Wake/Resolve, Settings, Reset.
+- A mock worker (SIMULATED) and Chat-Jimmy through its client and worker.json.
+- Persistent state and an append-only trace that includes prompts and replies.
+
+**What ran:** 13 Go tests (PASS). Full chain against a fake chat site through the real Chat-Jimmy worker in headless Chrome (PASS). Stop leaves no processes.
+
+**Found and fixed:** commands after chatter on the same line ("Let me think. NOTE: …") were unreadable.
+
+**Not verified:** real chatjimmy.ai following the format; whether several thoughts beat one; the right lifetime values; whether any of it is useful. Those are what the owner's runs are for.
+
+**Decision:** owner to test. No promotion requested.
 
 ### 2026-10-23 — Design foundation created
 

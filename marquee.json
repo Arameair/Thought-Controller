@@ -1,0 +1,13 @@
+{
+  "name": "Thought Controller — first thoughts (v1)",
+  "description": "Owner-triggered thoughts with a visible lifecycle (active, dormant, resolved, expired) through a mock worker or a running Chat-Jimmy. Nothing runs on its own; nothing is sent.",
+  "requires": ["go"],
+  "setup": "go build -o thought-controller .",
+  "run": "exec ./thought-controller",
+  "windows": {
+    "setup": "go build -o thought-controller.exe .",
+    "run": "thought-controller.exe"
+  },
+  "portEnv": "PORT",
+  "path": "/"
+}

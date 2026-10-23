@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thought Controller</title>
+<style>
+:root{--bg:#f6f6f3;--panel:#fff;--ink:#1c1d1a;--muted:#6a6c64;--line:#e1e1da;--accent:#3b5bdb;--tint:#edf0fd;
+--active:#2b8a3e;--dormant:#7048e8;--resolved:#1c7ed6;--expired:#868e96;--bad:#c92a2a;--warn:#b7791f}
+@media(prefers-color-scheme:dark){:root{--bg:#121311;--panel:#1b1c1a;--ink:#e9e9e4;--muted:#9c9d95;--line:#2f302c;--accent:#748ffc;--tint:#1f2440;
+--active:#69db7c;--dormant:#b197fc;--resolved:#74c0fc;--expired:#adb5bd;--bad:#ff8787;--warn:#ffd43b}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+header,.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+h1{font-size:20px;margin:0 8px 0 0}h2{font-size:14px;margin:0 0 8px;color:var(--muted);font-weight:650;text-transform:uppercase;letter-spacing:.04em}
+.pill{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--muted);background:var(--panel)}
+.pill.sim{color:var(--warn);border-color:var(--warn)}.pill.ok{color:var(--active);border-color:var(--active)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+.spacer{flex:1}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+input[type=text],select,textarea{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+input[type=text]{flex:1;min-width:200px}
+button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:650}
+button.small{padding:2px 8px;font-size:12px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:12px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:860px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.col h3{font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.col.active h3{color:var(--active)}.col.dormant h3{color:var(--dormant)}.col.resolved h3{color:var(--resolved)}.col.expired h3{color:var(--expired)}
+.card{border:1px solid var(--line);border-left:3px solid var(--expired);border-radius:8px;padding:8px 9px;margin-bottom:8px;background:var(--bg)}
+.card.active{border-left-color:var(--active)}.card.dormant{border-left-color:var(--dormant)}.card.resolved{border-left-color:var(--resolved)}
+.card .q{font-weight:600}.card .meta{font-size:11px;color:var(--muted);margin:2px 0 4px}
+.card .n{font-size:12px;color:var(--muted);margin:2px 0}.card .c{font-size:12px;margin-top:4px}
+.card.hl{outline:2px solid var(--accent)}
+.empty{font-size:12px;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:8px 10px}.tile b{display:block;font-size:18px;font-variant-numeric:tabular-nums}.tile span{font-size:11px;color:var(--muted)}
+.beat{border-bottom:1px solid var(--line);padding:8px 0}.beat:last-child{border:0}
+.beat .head{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+.beat .k{font-weight:650}.beat .why{color:var(--muted);font-size:12px}
+.tag{font-size:11px;border-radius:4px;padding:0 5px;border:1px solid currentColor}
+.tag.stale{color:var(--warn)}.tag.err{color:var(--bad)}.tag.sim{color:var(--warn)}.tag.mal{color:var(--bad)}
+ul.ch{margin:4px 0 0;padding-left:18px;font-size:12px}ul.ch li.ok{color:var(--active)}ul.ch li.no{color:var(--muted)}ul.ch li.lc{color:var(--dormant)}
+details{margin-top:4px}summary{cursor:pointer;font-size:12px;color:var(--accent)}
+pre{font:12px ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border-radius:6px;padding:8px;margin:4px 0;max-height:260px;overflow:auto}
+.ev{font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line)}.ev .r{color:var(--muted);font-variant-numeric:tabular-nums}
+.ev.new{font-weight:600}
+.say{font-size:13px;padding:6px 8px;border-left:3px solid var(--accent);background:var(--tint);border-radius:4px;margin-bottom:6px}
+.say .meta{font-size:11px;color:var(--muted)}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:8px}
+.settings label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.settings input{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+.note{font-size:12px;color:var(--muted)}
+.msg{font-size:12px;color:var(--bad);min-height:1em}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <h1>Thought Controller</h1>
+ <span class="pill" id="workerPill">…</span>
+ <span class="pill" id="beatPill">beat 0</span>
+ <span class="pill" id="revPill">revision 0</span>
+ <span class="pill" id="runPill" hidden></span>
+ <span class="spacer"></span>
+ <select id="workerSel" title="Which worker thinks">
+  <option value="mock">Mock worker (simulated)</option>
+  <option value="chat-jimmy">Chat-Jimmy (live)</option>
+ </select>
+</header>
+
+<div class="panel">
+ <div class="row">
+  <input type="text" id="eventText" placeholder="Something happened… e.g. “I entered Goldshire again.”">
+  <button id="addEvent">Add event</button>
+ </div>
+ <div class="row" style="margin-top:8px">
+  <input type="text" id="thoughtText" placeholder="Or start a thought yourself… e.g. “What should I work on next?”">
+  <button id="addThought">Start thought</button>
+ </div>
+ <div class="row" style="margin-top:10px">
+  <button class="primary" id="step">Think once</button>
+  <button id="run5">Run 5 beats</button>
+  <button id="runMax">Run 20 beats</button>
+  <button id="stop" hidden>Stop</button>
+  <span class="spacer"></span>
+  <button id="toggleSettings" class="small">Settings</button>
+  <button id="reset" class="small">Reset</button>
+ </div>
+ <div class="msg" id="msg"></div>
+ <p class="note" style="margin:4px 0 0">Each beat makes <b>at most one</b> worker call: a <b>heartbeat</b> if there are new events, otherwise <b>work</b> on the active thought that's waited longest. If there's nothing to think about, it stops without calling. Nothing runs unless you press a button, and nothing is ever sent anywhere.</p>
+ <div id="settingsBox" hidden>
+  <div class="settings" id="settings"></div>
+  <div class="row" style="margin-top:8px"><button id="saveSettings" class="small">Save settings</button><span class="note">Settings are recorded with every beat, so runs can be compared.</span></div>
+ </div>
+</div>
+
+<div class="panel">
+ <h2>Thoughts</h2>
+ <div class="board" id="board"></div>
+</div>
+
+<div class="grid2">
+ <div class="panel">
+  <div class="row"><h2 style="margin:0">Timeline</h2><span class="spacer"></span><a href="/api/trace.jsonl" download class="note">Download trace</a></div>
+  <div id="trace"></div>
+ </div>
+ <div>
+  <div class="panel">
+   <h2>Numbers</h2>
+   <div class="tiles" id="tiles"></div>
+   <div class="note" id="reasons" style="margin-top:6px"></div>
+  </div>
+  <div class="panel">
+   <h2>Would say (never sent)</h2>
+   <div id="says"><div class="empty">Nothing yet.</div></div>
+  </div>
+  <div class="panel">
+   <h2>Events</h2>
+   <div id="events"><div class="empty">No events yet.</div></div>
+  </div>
+ </div>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ms=v=>v==null?'—':v>=1000?(v/1000).toFixed(2)+' s':v+' ms';
+let state=null, hl=0, settingsLoaded=false;
+async function get(p){const r=await fetch(p,{cache:'no-store'});return r.json()}
+async function post(p,b){
+ const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+ const j=await r.json().catch(()=>({error:'bad reply'}));
+ if(!r.ok&&j.error)throw new Error(j.error);
+ return j;
+}
+function flash(t,bad=true){$('msg').textContent=t||'';$('msg').style.color=bad?'':'var(--active)'}
+
+function card(t){
+ const notes=(t.notes||[]).slice(-2).map(n=>`<div class="n">• ${esc(n.text)}</div>`).join('');
+ const btns=t.state==='active'?`<button class="small" data-act="dormant" data-id="${t.id}">Sleep</button> <button class="small" data-act="resolved" data-id="${t.id}">Resolve</button>`
+  :t.state==='dormant'?`<button class="small" data-act="active" data-id="${t.id}">Wake</button> <button class="small" data-act="resolved" data-id="${t.id}">Resolve</button>`:'';
+ return `<div class="card ${t.state}${t.id===hl?' hl':''}" id="card-${t.id}">
+  <div class="meta">t-${t.id}${t.parent?` · follow-up of <a href="#card-${t.parent}" data-hl="${t.parent}">t-${t.parent}</a>`:''} · from ${esc(t.origin)} · worked ${t.total_work||0}×${t.activations?` · woken ${t.activations}×`:''}</div>
+  <div class="q">${esc(t.question)}</div>${notes}
+  ${t.conclusion?`<div class="c"><b>→</b> ${esc(t.conclusion)}</div>`:''}
+  ${btns?`<div style="margin-top:5px">${btns}</div>`:''}</div>`;
+}
+function renderBoard(ts){
+ const cols={active:[],dormant:[],resolved:[],expired:[]};
+ for(const t of ts)(cols[t.state]||cols.expired).push(t);
+ cols.resolved.reverse();cols.expired.reverse();
+ $('board').innerHTML=Object.entries(cols).map(([k,v])=>`<div class="col ${k}"><h3>${k} (${v.length})</h3>${v.length?v.slice(0,12).map(card).join(''):'<div class="empty">—</div>'}</div>`).join('');
+}
+function renderTiles(m){
+ const tiles=[['Beats',m.beats],['Worker calls',m.calls],['Median call',ms(m.median_ms)],['95th pct',ms(m.p95_ms)],
+  ['Thoughts made',m.created],['Changes applied',m.applied],['Rejected',m.rejected],['Unreadable replies',m.malformed],['Stale replies',m.stale],
+  ['Errors',Object.values(m.errors||{}).reduce((a,b)=>a+b,0)],['Would say',m.says]];
+ $('tiles').innerHTML=tiles.map(([k,v])=>`<div class="tile"><b>${v}</b><span>${k}</span></div>`).join('');
+ const r=Object.entries(m.reject_reasons||{}).map(([k,v])=>`${k} ${v}`).join(' · ');
+ $('reasons').textContent=(r?'Rejected because: '+r+'. ':'')+(m.simulated_calls?`${m.simulated_calls} of ${m.calls} calls were simulated (mock).`:'');
+}
+function renderTrace(tr){
+ $('trace').innerHTML=tr.length?tr.map(b=>{
+  if(b.kind==='owner')return `<div class="beat"><div class="head"><span class="why">✋ ${esc(b.why)}</span></div></div>`;
+  const tags=[b.simulated?'<span class="tag sim">SIMULATED</span>':'',b.stale?'<span class="tag stale">STALE</span>':'',
+   b.error_cat?`<span class="tag err">${esc(b.error_cat)}</span>`:'',b.malformed?'<span class="tag mal">unreadable</span>':''].join(' ');
+  const li=(a,c)=>(a||[]).map(x=>`<li class="${c}">${esc(x)}</li>`).join('');
+  const parsedNothing=b.parsed&&b.parsed.nothing&&!(b.applied||[]).length;
+  return `<div class="beat"><div class="head"><span class="k">Beat ${b.beat} · ${b.kind}${b.focus?' t-'+b.focus:''}</span>
+   <span class="why">${ms(b.took_ms)} · rev ${b.rev_before}${b.rev_after!==b.rev_before?'→'+b.rev_after:''} · ${esc(b.why)}</span> ${tags}</div>
+   <ul class="ch">${li(b.applied,'ok')}${li(b.rejected,'no')}${li(b.changes,'lc')}${parsedNothing?'<li class="no">worker said NOTHING</li>':''}${b.error?`<li class="no">${esc(b.error)}</li>`:''}</ul>
+   <details><summary>what the worker saw and said</summary><pre>${esc(b.prompt)}</pre><pre>${esc(b.reply||'(no reply)')}</pre>${b.parsed&&b.parsed.ignored?`<div class="note">Ignored lines: ${esc(b.parsed.ignored.join(' | '))}</div>`:''}</details></div>`;
+ }).join(''):'<div class="empty">Nothing yet. Add an event, then press Think once.</div>';
+}
+function renderSettings(s){
+ const f=[['max_active','Max active thoughts'],['max_new_per_beat','Max new per beat'],['max_depth','Max follow-up depth'],['max_work_per_thought','Work beats before sleep'],
+  ['dormant_after','Idle beats → dormant'],['expire_after','Idle beats → expired'],['max_run_beats','Max beats per run'],['gap_ms','Pause between beats (ms)']];
+ $('settings').innerHTML=f.map(([k,l])=>`<label>${l}<input type="number" id="s_${k}" value="${s[k]}"></label>`).join('')+
+  `<label>Fresh chat each call<select id="s_fresh_chat"><option value="true">yes (clean, ~0.5–1 s slower)</option><option value="false">no (faster)</option></select></label>`+
+  `<label style="grid-column:1/-1">About the companion (sent with every prompt)<input type="text" id="s_identity" value="${esc(s.identity)}" placeholder="e.g. A calm WoW companion for Dustin; prefers short, practical thoughts."></label>`;
+ $('s_fresh_chat').value=String(s.fresh_chat);
+}
+async function refresh(){
+ try{
+  state=await get('/api/state');
+  const tr=await get('/api/trace?n=40');
+  $('beatPill').textContent='beat '+state.beat;
+  $('revPill').textContent='revision '+state.rev+(state.rev>state.last_seen_rev?` (${state.rev-state.last_seen_rev} unseen)`:'');
+  $('workerSel').value=state.worker;
+  const run=state.run||{};
+  $('runPill').hidden=!run.running&&!run.stopped;
+  $('runPill').textContent=run.running?`running ${run.done}/${run.planned}`:run.stopped?`last run: ${run.stopped}`:'';
+  const busy=run.running||state.busy;
+  for(const id of ['step','run5','runMax','reset','workerSel'])$(id).disabled=busy;
+  $('stop').hidden=!run.running;
+  renderBoard(state.thoughts||[]);renderTiles(state.metrics);renderTrace(tr.trace||[]);
+  $('says').innerHTML=(state.says||[]).length?state.says.slice().reverse().map(s=>`<div class="say">${esc(s.text)}<div class="meta">beat ${s.beat}${s.thought?' · from t-'+s.thought:''}</div></div>`).join(''):'<div class="empty">Nothing yet.</div>';
+  $('events').innerHTML=(state.events||[]).length?state.events.slice().reverse().map(e=>`<div class="ev${e.rev>state.last_seen_rev?' new':''}"><span class="r">e-${e.id} · rev ${e.rev}${e.rev>state.last_seen_rev?' · not seen yet':''}</span> ${esc(e.text)}</div>`).join(''):'<div class="empty">No events yet.</div>';
+  if(!settingsLoaded){renderSettings(state.settings);settingsLoaded=true}
+ }catch(e){flash('Lost contact with the controller: '+e)}
+}
+async function workerStatus(){
+ try{
+  const w=await get('/api/worker');
+  const p=$('workerPill');
+  p.textContent=w.simulated?'Mock worker · SIMULATED':(w.ready?'Chat-Jimmy ready':'Chat-Jimmy not ready');
+  p.className='pill '+(w.simulated?'sim':w.ready?'ok':'bad');p.title=w.detail;
+ }catch{}
+}
+$('addEvent').onclick=async()=>{const t=$('eventText').value.trim();if(!t)return;try{await post('/api/event',{text:t});$('eventText').value='';flash('')}catch(e){flash(e.message)}refresh()};
+$('eventText').onkeydown=e=>{if(e.key==='Enter')$('addEvent').click()};
+$('addThought').onclick=async()=>{const t=$('thoughtText').value.trim();if(!t)return;try{await post('/api/thought',{question:t});$('thoughtText').value='';flash('')}catch(e){flash(e.message)}refresh()};
+$('thoughtText').onkeydown=e=>{if(e.key==='Enter')$('addThought').click()};
+$('step').onclick=async()=>{$('step').disabled=true;try{const r=await post('/api/step',{});flash(r.nothing?r.detail:r.error?('Worker: '+r.error):'',!!r.error)}catch(e){flash(e.message)}refresh()};
+$('run5').onclick=async()=>{try{await post('/api/run',{beats:5});flash('')}catch(e){flash(e.message)}refresh()};
+$('runMax').onclick=async()=>{try{await post('/api/run',{beats:20});flash('')}catch(e){flash(e.message)}refresh()};
+$('stop').onclick=async()=>{await post('/api/stop',{});refresh()};
+$('reset').onclick=async()=>{if(!confirm('Clear all thoughts, events and the timeline? (Settings are kept; the old trace file is kept on disk.)'))return;try{await post('/api/reset',{})}catch(e){flash(e.message)}refresh()};
+$('workerSel').onchange=async()=>{try{await post('/api/worker',{worker:$('workerSel').value})}catch(e){flash(e.message)}workerStatus();refresh()};
+$('toggleSettings').onclick=()=>{$('settingsBox').hidden=!$('settingsBox').hidden};
+$('saveSettings').onclick=async()=>{
+ const s={};for(const k of ['max_active','max_new_per_beat','max_depth','max_work_per_thought','dormant_after','expire_after','max_run_beats','gap_ms'])s[k]=+$('s_'+k).value;
+ s.fresh_chat=$('s_fresh_chat').value==='true';s.identity=$('s_identity').value;
+ try{await post('/api/settings',s);flash('Settings saved.',false)}catch(e){flash(e.message)}refresh()};
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('button[data-act]');
+ if(b){let note='';if(b.dataset.act==='resolved')note=prompt('Conclusion (optional):')||'';
+  try{await post('/api/thought/state',{id:+b.dataset.id,state:b.dataset.act,note})}catch(err){flash(err.message)}refresh();return}
+ const a=e.target.closest('a[data-hl]');if(a){hl=+a.dataset.hl;renderBoard(state.thoughts||[])}
+});
+refresh();workerStatus();setInterval(refresh,1000);setInterval(workerStatus,5000);
+</script>
+</body>
+</html>
