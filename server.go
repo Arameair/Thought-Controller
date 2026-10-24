@@ -22,7 +22,7 @@ type server struct{ app *App }
 
 var identityStatus = map[string]string{
 	"state":  "NOT CONNECTED",
-	"detail": "No authenticated Identity handshake exists yet. Identities and their Thought permissions shown here come from the Thought engine (which currently uses its own TEST cards and TEST permissions).",
+	"detail": "No authenticated Identity handshake exists yet. Identities and their Thought permissions shown here come from the Thought engine, which holds them itself until Identity is connected.",
 }
 
 func (s *server) routes() *http.ServeMux {
@@ -90,8 +90,8 @@ func (s *server) routes() *http.ServeMux {
 		case !uuidRe.MatchString(eid) || !uuidRe.MatchString(tid):
 			writeErr(w, fmt.Errorf("%w: identity or Thought ID is not valid", ErrInvalid))
 			return
-		case in.Action != "sleep" && in.Action != "wake" && in.Action != "resolve" && in.Action != "reopen":
-			writeErr(w, fmt.Errorf("%w: action must be sleep, wake, resolve or reopen", ErrInvalid))
+		case in.Action != "sleep" && in.Action != "wake" && in.Action != "resolve" && in.Action != "reopen" && in.Action != "think":
+			writeErr(w, fmt.Errorf("%w: action must be sleep, wake, resolve, reopen or think", ErrInvalid))
 			return
 		}
 		code, body, err := a.src.Action(eid, tid, in.Action)

@@ -3,6 +3,8 @@
 > **This branch: `experiment/real-thought-dashboard-20261023`**, built on `experiment/first-user-dashboard-20261023` @ `a6b9dfa` at the owner's request ("fix it so things are not simulated"). **Not approved, not promoted.** `alpha`, `main` and the earlier dashboard branch are untouched.
 >
 > Results and owner checklist: [docs/REAL_DASHBOARD_RESULTS_2026-10-23.md](docs/REAL_DASHBOARD_RESULTS_2026-10-23.md).
+>
+> **Update:** the engine to use with Chat-Jimmy is now **[Arameair/Thought-engine](https://github.com/Arameair/Thought-engine)** (`experiment/thought-engine-v1-20261023`): real observations, no TEST mode, Chat-Jimmy as its AI worker. This dashboard reads it unchanged and adds a **Think once** button (shown when the engine offers it). The earlier Arameair/Thought prototype still works too.
 
 Thought Controller is the developer dashboard for Thought activity. It now shows **real data only**: the Sparks, Traces and Thoughts that a running **Thought engine** ([Arameair/Thought](https://github.com/Arameair/Thought), branch `experiment/spark-trace-thought-v1-20261023`) has actually produced, organized by identity, Netflix-style.
 

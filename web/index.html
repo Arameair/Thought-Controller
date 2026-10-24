@@ -206,7 +206,7 @@ function renderConnect(){
       <p>Thought Controller shows the real Sparks, Traces and Thoughts that the <b>Thought engine</b> (Arameair/Thought) produces. It doesn't make up any of its own.</p>
       <p class="muted"><b>${esc(s.label)}</b> — ${esc(s.detail)}${s.checked_at ? ` <span class="faint">(checked ${when(s.checked_at)})</span>` : ""}</p>
       <ol>
-        <li><b>Play</b> the Thought engine in Project Controller (Arameair/Thought, branch <span class="mono">experiment/spark-trace-thought-v1-20261023</span>), or run it yourself.</li>
+        <li><b>Play</b> the Thought engine in Project Controller — <b>Arameair/Thought-engine</b> (branch <span class="mono">experiment/thought-engine-v1-20261023</span>, works with Chat-Jimmy), or the earlier Arameair/Thought test prototype — or run it yourself.</li>
         <li>Put its address below, or press <b>Find on this computer</b>.</li>
       </ol>
       <div class="actions" style="margin-top:12px"><input id="addr" class="mono" value="${esc(s.address)}" style="width:220px"><button class="primary" id="saveAddr">Connect</button><button id="scan">Find on this computer</button><button class="ghost" id="retry">Check again</button></div>
@@ -335,8 +335,10 @@ function drawThought(){
       <div>Belongs to</div><div>${esc(E.card.display_name)} <span class="mono faint">${esc(t.entity_id)}</span></div>
       <div>Formed</div><div>${when(t.created_at)}</div><div>Last change</div><div>${when(t.updated_at)}</div>
       <div>Clues</div><div>${t.trace_ids.length} (${t.origin_trace_ids.length} formed it)</div>
-      <div>Worker</div><div>None — formed by the Thought engine's rules; no AI model was involved</div></div>
+      <div>Question by</div><div>${esc(t.question_by || "the Thought engine's rules (no AI worker)")}</div>
+      <div>Notes</div><div>${(t.notes||[]).length ? (t.notes||[]).length + " — see Development history" : "none yet"}</div></div>
     <h2 style="margin-top:18px">Ask the engine to change it</h2>
+    ${canThink() && t.state!=="resolved" ? `<div class="actions" style="margin-bottom:10px"><button class="primary" data-a="think">Think once</button><span class="faint" style="font-size:12.5px">The engine asks its AI worker for one new note on this Thought.</span></div>` : ""}
     <div class="actions">${t.state==="active"?`<button data-a="sleep">Sleep</button>`:""}${t.state==="sleeping"?`<button data-a="wake">Wake</button>`:""}${t.state!=="resolved"?`<button data-a="resolve">Resolve</button>`:`<button data-a="reopen">Reopen</button>`}
       <span class="faint" style="font-size:12.5px">${on ? "The Thought engine checks the permission and the Thought's state, then saves the change." : "Thought Processing is not enabled for this identity — the engine will refuse changes."}</span></div>
     <div id="actErr"></div>`;
@@ -360,6 +362,7 @@ function drawThought(){
   document.querySelectorAll("[data-a]").forEach(b => b.onclick = () => act(t.thought_id, b.dataset.a));
   const cp = $("#cpTd"); if (cp) cp.onclick = () => copyText(thoughtDiag(d));
 }
+function canThink(){ const st = status(); return !!(st && st.features && st.features.includes("think")); }
 function thoughtDiag(d){
   const t = d.thought, s = O.source, st = status();
   return [`## Thought diagnostics (${new Date().toISOString()})`, "",
@@ -373,9 +376,10 @@ function thoughtDiag(d){
     "_Question text and event summaries are left out._"].join("\n");
 }
 async function act(tid, action){
+  if (action === "think"){ const b = document.querySelector('[data-a="think"]'); if (b){ b.disabled = true; b.textContent = "Thinking…"; } }
   try {
     await api(`/api/entities/${view.entity}/thoughts/${tid}`, {action});
-    toast("The Thought engine " + ({sleep:"put it to sleep", wake:"woke it", resolve:"resolved it", reopen:"reopened it"}[action]));
+    toast("The Thought engine " + ({sleep:"put it to sleep", wake:"woke it", resolve:"resolved it", reopen:"reopened it", think:"added a note from its AI worker"}[action]));
     await refresh(); await openThought(tid, "details");
   } catch(e){
     const el = $("#actErr"); if (el) el.innerHTML = `<div class="banner bad" style="margin-top:12px">The Thought engine refused: ${esc(e.message)}</div>`; else toast(e.message, true);

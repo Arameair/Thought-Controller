@@ -239,7 +239,7 @@ func (s *Source) Read(path string) (int, json.RawMessage, error) {
 	return code, json.RawMessage(body), nil
 }
 
-// Action forwards an owner's Sleep / Wake / Resolve / Reopen to the engine.
+// Action forwards an owner's Sleep / Wake / Resolve / Reopen / Think to the engine.
 // The engine decides: it checks the identity's permission and the Thought's
 // state. Thought Controller never changes thought data itself.
 func (s *Source) Action(eid, tid, action string) (int, json.RawMessage, error) {
@@ -251,7 +251,9 @@ func (s *Source) Action(eid, tid, action string) (int, json.RawMessage, error) {
 	s.st.Counters.ActionsSent++
 	s.mu.Unlock()
 	b, _ := json.Marshal(map[string]string{"action": action})
-	res, err := s.client.Post("http://"+addr+"/api/entities/"+eid+"/thoughts/"+tid, "application/json", bytes.NewReader(b))
+	// Think waits for the engine's AI worker, so actions get a longer timeout.
+	slow := &http.Client{Timeout: 2 * time.Minute, CheckRedirect: s.client.CheckRedirect}
+	res, err := slow.Post("http://"+addr+"/api/entities/"+eid+"/thoughts/"+tid, "application/json", bytes.NewReader(b))
 	if err != nil {
 		s.events.Add("error", fmt.Sprintf("%s request for Thought %s could not reach the engine: %s", action, tid, shortErr(err)))
 		return 0, nil, fmt.Errorf("couldn't reach the Thought engine: %s — nothing was changed", shortErr(err))
