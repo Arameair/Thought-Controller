@@ -1,81 +1,59 @@
-# Thought Controller — first new-administrator dashboard (SIMULATED prototype)
+# Thought Controller — dashboard on the real Thought engine
 
-> **This branch: `experiment/first-user-dashboard-20261023`**, started from `alpha` @ `02fc27f` for [Issue #6](https://github.com/Arameair/Thought-Controller/issues/6) (Stage A) and the [coordinated first-user handoff](https://github.com/Arameair/Thought-Controller/blob/experiment/multi-identity-controller-design-20261023/docs/CLAUDE_FIRST_USER_PROTOTYPE_HANDOFF_2026-10-23.md). **Not approved, not promoted.** `alpha`, `main` and every earlier experiment are untouched.
+> **This branch: `experiment/real-thought-dashboard-20261023`**, built on `experiment/first-user-dashboard-20261023` @ `a6b9dfa` at the owner's request ("fix it so things are not simulated"). **Not approved, not promoted.** `alpha`, `main` and the earlier dashboard branch are untouched.
 >
-> Its partner is Identity's `experiment/first-admin-wizard-20261023`. Start there: Identity is the first app a new administrator opens. Shared test results and the owner checklist for both apps live on the Identity branch: [FIRST_USER_PROTOTYPE_RESULTS_2026-10-23.md](https://github.com/Arameair/identity/blob/experiment/first-admin-wizard-20261023/docs/FIRST_USER_PROTOTYPE_RESULTS_2026-10-23.md). (Kept there so this branch's tip stays exactly the commit Identity pins.)
+> Results and owner checklist: [docs/REAL_DASHBOARD_RESULTS_2026-10-23.md](docs/REAL_DASHBOARD_RESULTS_2026-10-23.md).
 
-A Netflix/Prime-style **thought dashboard**: profile tiles for each identity (TASS, Example Workshop) plus **System Services** for the controller's own service identity, then rows of thought cards — **Continue Thinking · Active · Sleeping / Waiting · Resolved / History**. Click a card for its details, development history and diagnostics.
+Thought Controller is the developer dashboard for Thought activity. It now shows **real data only**: the Sparks, Traces and Thoughts that a running **Thought engine** ([Arameair/Thought](https://github.com/Arameair/Thought), branch `experiment/spark-trace-thought-v1-20261023`) has actually produced, organized by identity, Netflix-style.
 
-**Everything here is a test prototype.** The program is a **SIMULATED HOST**: it never launches anything, never calls an AI model, never contacts GitHub, and never thinks on its own. Every thought is made by an owner test button and marked **SIMULATED**.
+What changed from the previous dashboard:
+
+| Before (first-user-dashboard) | Now |
+|---|---|
+| A "SIMULATED HOST" with its own made-up thought store | No thought store at all. Every Spark, Trace and Thought is read live from the Thought engine |
+| Test thoughts from **Add simulated thought** / **Load sample set** buttons | Removed. Thoughts form in the engine from events, by the engine's rules |
+| State changes written by the dashboard itself | **Sleep / Wake / Resolve / Reopen** are sent to the engine, which checks that identity's permission and the Thought's state and saves the change — or refuses, and the dashboard shows why |
+| Simulated lifecycle / handshake (`tc-sim-handshake/0.1`) and a pretend "service start" | Removed. The dashboard is simply running or not; it connects to the engine and reports the engine's real state |
+| Fake identities passed in by Identity's simulated launcher | Identities, permissions and counts come from the engine |
 
 ## Run it in Project Controller
 
-1. **Arameair/Thought-Controller** → branch **`experiment/first-user-dashboard-20261023`** → **Play** (build plan: `go build -o thought-controller .`, then `./thought-controller`).
-2. The page says **"No controller service is running"**. That's correct: the *host* is up, but no installation's controller has been started.
-3. Note the **port** on this pane — you give it to Identity (or Identity's **Find on this computer** finds it).
-4. Open **Identity** (its own Play) and follow its first-run steps. When you approve automatic startup, Identity's simulated launcher asks this host to start *your* installation's controller with *your* IDs.
-5. **Stop** ends the host completely (no child processes exist). **Play** again: the host waits for Identity again, and Identity's saved approval starts it without asking.
+1. **Play Arameair/Thought** on `experiment/spark-trace-thought-v1-20261023` (the engine). Note its port.
+2. **Play Arameair/Thought-Controller** on `experiment/real-thought-dashboard-20261023`.
+3. If the dashboard says **NOT REACHABLE**, press **Find on this computer** → **Use**, or type the engine's port. The address is saved.
+4. Generate activity on the **engine's** page (enable TASS, send events). The dashboard updates by itself every 2 seconds.
 
-Data folder under Project Controller: `$PC_DATA/thought-controller-first-user` (shown on the page).
-
-## Run it standalone (no Project Controller)
-
+Standalone:
 ```sh
-go build -o thought-controller .
-PORT=7797 ./thought-controller -data ~/tc-first-user-test        # Linux / macOS / WSL
-```
-```powershell
-go build -o thought-controller.exe .
-$env:PORT=7797; .\thought-controller.exe -data $HOME\tc-first-user-test   # Windows PowerShell
+# Thought checkout:            go build -o thought . && PORT=7798 ./thought -data ~/thought-test
+# Thought-Controller checkout: go build -o thought-controller . && PORT=7797 ./thought-controller -data ~/tc-test
+# open http://127.0.0.1:7797/  (7798 is the default engine address; -thought 127.0.0.1:NNNN or THOUGHT_ADDR to change it)
 ```
 
-Port 7797 is what a new Identity profile looks at by default, so a standalone pair needs no setup. Without `-data`, the folder is `TC_FIRST_USER_DATA`, else `$PC_DATA/thought-controller-first-user`, else `~/.thought-controller-first-user/<branch>`. These names deliberately differ from the repaired V1 experiment's (`THOUGHT_CONTROLLER_DATA`, `~/.thought-controller/…`), so this prototype **cannot open that experiment's state**. A data folder inside the code checkout is refused; a second host on the same folder refuses to start.
+Data folder: `-data`, else `TC_DATA`, else `$PC_DATA/thought-controller`, else `~/.thought-controller-dashboard/<branch>`. It holds only `instance.json` (this dashboard's own instance ID), `settings.json` (the engine address) and `events.jsonl` (log). Thought data stays in the engine.
 
-## What you can do on the dashboard
+## What you'll see
 
-- **Who's thinking?** — one tile per identity Identity registered, with thought counts, and a **System Services** tile.
-- **Identity view** — the identity's ID (Copy ID), counts per row, **Add simulated thought** (title + row) and **Load sample set** (one SIMULATED thought per row). An identity with no thoughts shows **No thoughts yet** and says why.
-- **Thought detail** — *Details* (origin, timestamps, notes, worker calls = 0), owner **Continue / Activate / Sleep / Resolve** buttons and **Add note**; *Development history* (every state change and note); *Diagnostics* (IDs, lifecycle, storage path — no title or note text) with Copy.
-- **System Services** — the controller's **service ID**, **installation ID** and **administrator ID** exactly as Identity issued them, the start request and consent reference, the reference build and lifecycle counters. A service identity has no thoughts by design.
-- **Header** — service state, **Worker: NOT READY** (no AI worker exists), branch @ commit, **Logs**, **Copy Diagnostics**, **Stop service** (simulated).
-- If Identity opened the page for a different installation than the one running, a red banner says so.
+- A **LIVE** bar naming the engine (address, profile, branch @ commit) and the engine's **own** mode label. Today the engine reports `TEST · SIMULATED EVENTS · NO AI WORKER`, because its events come from its buttons and its permissions are TEST grants. The dashboard shows that honestly and invents nothing on top.
+- **Who's thinking?** — one tile per identity in the engine, greyed with **THOUGHT NOT ENABLED** when the engine's permission is off; plus **System Services**.
+- **Identity view** — counts; rows **Continue Thinking · Active · Sleeping / Waiting · Resolved / History**; **Recent evidence** (Traces, click for source event and reason); **Sparks** from the engine's current run, glowing then faded. An identity with nothing yet says **No thoughts yet** and where thoughts come from.
+- **Thought detail** — why it formed, **Evidence** (each Trace and its source event, FORMED IT vs LATER), **Development history**, **Diagnostics**, and the change buttons.
+- **System Services** — this dashboard's instance, build and data folder; the engine's service ID, installation, profile, version, build, rule and traffic; **Identity: NOT CONNECTED**.
+- **NOT REACHABLE / NOT A THOUGHT ENGINE / INCOMPATIBLE** screens when the engine is stopped, the address points at another program, or the engine version isn't understood. No stale data is shown.
+- **Copy Diagnostics** and **Logs**.
 
-## How installations stay apart
+## Boundaries
 
-```
-<data>/installations/<installation_id>/binding.json            service + administrator IDs (written once, never re-bound)
-<data>/installations/<installation_id>/events.jsonl
-<data>/installations/<installation_id>/entities/<entity_id>/entity.json
-<data>/installations/<installation_id>/entities/<entity_id>/thoughts/<thought_id>.json
-```
-
-- The host runs **at most one installation's controller service at a time** and only loads that installation's folder. A second installation is refused ("busy") until the first is stopped; then it gets its own folder and sees none of the first one's identities or thoughts.
-- Every thought route names its entity (`/api/entities/{entity_id}/thoughts/...`) and is looked up only in that entity's own folder. Reading or changing TASS's thought through the business path returns **404**. An unregistered entity is rejected, never defaulted.
-- Each save is written to a temp file, flushed, renamed, then **read back**; only then is it shown as saved. Unreadable files are listed and **left untouched**.
-
-## Real vs simulated
-
-| Piece | Status |
-|---|---|
-| Dashboard, rows, empty states, detail / history / diagnostics | **Works** (real UI over real files) |
-| Per-installation and per-entity storage, restart restore | **Works** (tested with the real binary) |
-| Server-side entity scoping (cross-entity read/write → 404) | **Works**, but **no authentication** — any local program can call the API |
-| Health / start / stop / register | **SIMULATED handshake** `tc-sim-handshake/0.1`, unauthenticated |
-| "Starting" the controller | **SIMULATED**: the host is already running; a start request opens an installation's service inside it. No process is launched |
-| Thoughts | **SIMULATED test fixtures** made by buttons; 0 model calls |
-| AI worker / Chat-Jimmy | **Not present** (NOT READY) |
-| GitHub | **Not present** — Identity owns GitHub status |
-
-## What was reviewed and what was (not) carried over
-
-- **`alpha` @ `02fc27f`** (bootstrap README) — this branch starts here.
-- **`experiment/v1-repair-20261023` @ `e943847`** (repaired V1 thought engine) — **not merged and not ported.** Its engine (beats, parser, worker, Chat-Jimmy client) is out of scope for a no-AI visual prototype and is still unapproved. Its vocabulary (active / dormant / resolved) and its no-hidden-send, honest-label and redacted-diagnostics rules shaped this UI. Bringing the engine under per-entity scoping is Stage B and needs an owner-approved plan.
-- **Ported by copy, with attribution comments** from Arameair/identity `experiment/identity-local-v1-20261023` @ `2b31e99`: `lock.go`, `lock_unix.go`, `lock_windows.go` (one host per data folder), the data-folder resolution pattern and the loopback / same-origin request guards.
+- The dashboard never thinks, never writes thought data, never launches programs, never calls AI models or GitHub. Its only outbound requests go to the configured loopback engine address, and only after the reply is verified to be a compatible Thought engine (`thought-spark-trace-v0.x`).
+- IDs are validated before anything is forwarded, and only four actions exist. Every read and change is answered by the engine for one named identity: asking for TASS's Thought through the Business returns the engine's **404**; changing a Thought while that identity's permission is off returns the engine's **403 DENIED**.
+- **No authentication** yet, on this dashboard or on the engine. Loopback-only listening, a Host check and a same-origin check stop other web pages, but any local program can call either API.
+- **Identity is not connected.** The dashboard no longer speaks the old simulated protocol, so Identity's `experiment/first-admin-wizard-20261023` (pinned to the old dashboard commit) will correctly report this build as **INCOMPATIBLE**. The old dashboard branch still works with it.
 
 ## Tests
 
-`go test ./...` — 10 tests, including **`TestRealProcess`**, which builds and runs the real binary with `PORT`, `PC_BRANCH`, `PC_DATA`: start → bind an installation → add a thought → same-folder second copy refused → SIGTERM (lock removed) → Play again → service waits → start → thought restored. Also covered: request validation, duplicate request IDs, reuse, refusal of a second installation / changed service ID / unapproved commit, entity scoping, restart restore, second-installation isolation, broken-file reporting, diagnostics redaction, Host/Origin/Content-Type guards. Builds for Linux, Windows and macOS.
+`go test ./...` — 5 tests, including a real-process Stop/Play test (instance ID and engine address survive; same-folder second copy refused).
+`THOUGHT_SRC=/path/to/Thought go test -run RealThought -v` — runs the **real engine and the real dashboard together**: not-reachable → connected, engine data shown, evidence, cross-identity 404, Sleep made in the engine, engine refusals passed through, engine stop/start, dashboard restart, diagnostics without names.
 
 ## Rollback
 
-Nothing was promoted. Stop using this branch — `alpha` (`02fc27f`) is untouched. To clear test data, Stop the host and delete its data folder (shown on the page). To remove the experiment entirely: `git push origin --delete experiment/first-user-dashboard-20261023`.
+Stop using this branch; the previous dashboard (`experiment/first-user-dashboard-20261023` @ `a6b9dfa`) and `alpha` are untouched. Delete the data folder shown under System Services, or remove the experiment: `git push origin --delete experiment/real-thought-dashboard-20261023`.

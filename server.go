@@ -16,305 +16,196 @@ import (
 //go:embed web/index.html
 var indexHTML []byte
 
-type server struct{ host *Host }
+const protocol = "tc-dashboard/0.2"
+
+type server struct{ app *App }
+
+var identityStatus = map[string]string{
+	"state":  "NOT CONNECTED",
+	"detail": "No authenticated Identity handshake exists yet. Identities and their Thought permissions shown here come from the Thought engine (which currently uses its own TEST cards and TEST permissions).",
+}
 
 func (s *server) routes() *http.ServeMux {
+	a := s.app
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", local(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		w.Write(indexHTML)
 	}))
-	mux.HandleFunc("GET /api/health", local(s.handleHealth))
-	mux.HandleFunc("GET /api/workspace", local(s.handleWorkspace))
-	mux.HandleFunc("GET /api/diagnostics", local(s.handleDiagnostics))
 
-	// SIMULATED lifecycle + handshake used by Identity's simulated launcher.
-	mux.HandleFunc("POST /api/sim/lifecycle/start", write(s.handleStart))
-	mux.HandleFunc("POST /api/sim/lifecycle/stop", write(s.handleStop))
-	mux.HandleFunc("POST /api/sim/register", write(s.handleRegister))
+	// Thought Controller's own health. Read-only; never contacts anything else.
+	mux.HandleFunc("GET /api/health", local(func(w http.ResponseWriter, r *http.Request) {
+		st := a.src.State()
+		writeJSON(w, 200, map[string]any{
+			"app": "thought-controller", "protocol": protocol, "version": appVersion, "instance_id": a.inst.InstanceID,
+			"build":    map[string]any{"reference_repo": refRepo, "branch": a.cfg.Branch, "branch_source": a.cfg.BranchFrom, "commit": a.cfg.Commit, "detached": a.cfg.Detached},
+			"source":   map[string]any{"kind": "thought-engine", "address": st.Address, "state": st.State},
+			"identity": identityStatus,
+		})
+	}))
 
-	// Thoughts: every route names its entity.
-	mux.HandleFunc("GET /api/entities/{eid}/thoughts", local(func(w http.ResponseWriter, r *http.Request) {
-		list, err := s.host.ListThoughts(r.PathValue("eid"))
-		if err != nil {
-			writeErr(w, err)
+	// Everything the page needs at the top level, read live from the engine.
+	mux.HandleFunc("GET /api/overview", local(func(w http.ResponseWriter, r *http.Request) {
+		raw, st := a.src.Status()
+		var status any
+		if raw != nil {
+			status = raw
+		}
+		a.mu.Lock()
+		probs := append([]string{}, a.problems...)
+		a.mu.Unlock()
+		writeJSON(w, 200, map[string]any{
+			"tc": map[string]any{"instance": a.inst, "config": a.cfg, "pid": os.Getpid(), "started_at": a.started.UTC(), "protocol": protocol,
+				"events": a.events.Recent(40), "events_error": a.events.Err(), "problems": probs},
+			"source": st, "status": status, "identity": identityStatus, "server_time": time.Now().UTC(),
+		})
+	}))
+
+	mux.HandleFunc("GET /api/entities/{eid}", local(func(w http.ResponseWriter, r *http.Request) {
+		eid := r.PathValue("eid")
+		if !uuidRe.MatchString(eid) {
+			writeErr(w, fmt.Errorf("%w: identity ID is not valid", ErrInvalid))
 			return
 		}
-		writeJSON(w, 200, map[string]any{"entity_id": r.PathValue("eid"), "thoughts": list, "states": thoughtStates})
+		s.forward(w, "/api/entities/"+eid)
 	}))
 	mux.HandleFunc("GET /api/entities/{eid}/thoughts/{tid}", local(func(w http.ResponseWriter, r *http.Request) {
-		t, err := s.host.GetThought(r.PathValue("eid"), r.PathValue("tid"))
-		if err != nil {
-			writeErr(w, err)
+		eid, tid := r.PathValue("eid"), r.PathValue("tid")
+		if !uuidRe.MatchString(eid) || !uuidRe.MatchString(tid) {
+			writeErr(w, fmt.Errorf("%w: identity or Thought ID is not valid", ErrInvalid))
 			return
 		}
-		writeJSON(w, 200, map[string]any{"thought": t})
-	}))
-	mux.HandleFunc("GET /api/entities/{eid}/thoughts/{tid}/diagnostics", local(s.handleThoughtDiagnostics))
-	mux.HandleFunc("POST /api/entities/{eid}/thoughts", write(func(w http.ResponseWriter, r *http.Request) {
-		var in struct {
-			Title     string `json:"title"`
-			State     string `json:"state"`
-			RequestID string `json:"request_id"`
-		}
-		if !decode(w, r, &in) {
-			return
-		}
-		t, repeat, err := s.host.CreateThought(r.PathValue("eid"), in.Title, in.State, in.RequestID, "owner test button (SIMULATED — no model was involved)")
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		writeJSON(w, 201, map[string]any{"thought": t, "repeat": repeat})
-	}))
-	mux.HandleFunc("POST /api/entities/{eid}/samples", write(func(w http.ResponseWriter, r *http.Request) {
-		var in struct {
-			RequestID string `json:"request_id"`
-		}
-		if !decode(w, r, &in) {
-			return
-		}
-		eid := r.PathValue("eid")
-		ws := s.host.Workspace()
-		etype := ""
-		for _, e := range ws.Entities {
-			if e.EntityID == eid {
-				etype = e.EntityType
-			}
-		}
-		var made []Thought
-		for i, st := range sampleSet(etype) {
-			rid := ""
-			if in.RequestID != "" {
-				rid = fmt.Sprintf("%s-%d", in.RequestID, i)
-			}
-			t, _, err := s.host.CreateThought(eid, st[1], st[0], rid, "sample set button (SIMULATED sample — no model was involved)")
-			if err != nil {
-				writeErr(w, err)
-				return
-			}
-			made = append(made, t)
-		}
-		writeJSON(w, 201, map[string]any{"thoughts": made})
+		s.forward(w, "/api/entities/"+eid+"/thoughts/"+tid)
 	}))
 	mux.HandleFunc("POST /api/entities/{eid}/thoughts/{tid}", write(func(w http.ResponseWriter, r *http.Request) {
+		eid, tid := r.PathValue("eid"), r.PathValue("tid")
 		var in struct {
-			State string `json:"state"`
-			Note  string `json:"note"`
+			Action string `json:"action"`
 		}
 		if !decode(w, r, &in) {
 			return
 		}
-		t, err := s.host.UpdateThought(r.PathValue("eid"), r.PathValue("tid"), in.State, in.Note)
+		switch {
+		case !uuidRe.MatchString(eid) || !uuidRe.MatchString(tid):
+			writeErr(w, fmt.Errorf("%w: identity or Thought ID is not valid", ErrInvalid))
+			return
+		case in.Action != "sleep" && in.Action != "wake" && in.Action != "resolve" && in.Action != "reopen":
+			writeErr(w, fmt.Errorf("%w: action must be sleep, wake, resolve or reopen", ErrInvalid))
+			return
+		}
+		code, body, err := a.src.Action(eid, tid, in.Action)
 		if err != nil {
+			writeJSON(w, 502, map[string]string{"error": err.Error()})
+			return
+		}
+		writeRaw(w, code, body)
+	}))
+
+	mux.HandleFunc("POST /api/source", write(func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			Address string `json:"address"`
+		}
+		if !decode(w, r, &in) {
+			return
+		}
+		if err := a.SetThoughtAddress(in.Address); err != nil {
 			writeErr(w, err)
 			return
 		}
-		writeJSON(w, 200, map[string]any{"thought": t})
+		writeJSON(w, 200, map[string]any{"source": a.src.State()})
 	}))
+	mux.HandleFunc("POST /api/source/scan", write(func(w http.ResponseWriter, r *http.Request) {
+		hits := Scan(a.cfg.Port)
+		a.events.Add("source", fmt.Sprintf("searched 127.0.0.1 ports 7778–7899 for Thought engines (read-only): %d found", len(hits)))
+		writeJSON(w, 200, map[string]any{"hits": hits})
+	}))
+	mux.HandleFunc("GET /api/diagnostics", local(s.handleDiagnostics))
 	return mux
 }
 
-// Health is a read-only handshake. It never sends an AI prompt.
-func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	h := s.host
-	ws := h.Workspace()
-	svc := map[string]any{"state": "not_started", "readiness": "NOT STARTED"}
-	if ws.Started {
-		svc = map[string]any{
-			"state": "ready", "readiness": "READY (simulated)",
-			"service_id": ws.Binding.ServiceID, "installation_id": ws.Binding.InstallationID,
-			"admin_id": ws.Binding.AdminID, "started_at": ws.StartedAt, "start_request_id": ws.RequestID,
-			"entities": len(ws.Entities),
-		}
-	}
-	writeJSON(w, 200, map[string]any{
-		"app":            "thought-controller",
-		"protocol":       protocol,
-		"simulated":      true,
-		"authentication": "NONE — simulated handshake; any local program can call this API",
-		"mode":           "SIMULATED HOST (no process launching, no AI worker, no GitHub)",
-		"build": map[string]any{
-			"reference_repo": refRepo, "branch": h.cfg.Branch, "branch_source": h.cfg.BranchFrom,
-			"commit": h.cfg.Commit, "detached": h.cfg.Detached, "version": appVersion,
-			"provenance": "TEST / LOCAL CHECKOUT — not a published approved release (none exists)",
-		},
-		"host":     map[string]any{"pid": os.Getpid(), "port": h.cfg.Port, "data_dir": h.cfg.DataDir, "data_source": h.cfg.DataSource, "started_at": h.started.UTC()},
-		"service":  svc,
-		"worker":   map[string]any{"state": "NOT READY", "reason": "no AI worker exists in this prototype"},
-		"counters": h.Counters(),
-		"features": []string{"sim-lifecycle-start", "sim-lifecycle-stop", "sim-register", "entity-scoped-thoughts"},
-	})
-}
-
-func (s *server) handleWorkspace(w http.ResponseWriter, r *http.Request) {
-	h := s.host
-	writeJSON(w, 200, map[string]any{
-		"workspace":         h.Workspace(),
-		"states":            thoughtStates,
-		"config":            h.cfg,
-		"counters":          h.Counters(),
-		"host_events":       h.events.Recent(20),
-		"host_events_error": h.events.Err(),
-		"protocol":          protocol,
-		"pid":               os.Getpid(),
-	})
-}
-
-func (s *server) handleStart(w http.ResponseWriter, r *http.Request) {
-	var in StartRequest
-	if !decode(w, r, &in) {
-		return
-	}
-	res, err := s.host.Start(in)
+// forward returns the engine's reply for an entity-scoped read, with the
+// engine's own status code (e.g. 404 for a Thought another identity owns).
+func (s *server) forward(w http.ResponseWriter, path string) {
+	code, body, err := s.app.src.Read(path)
 	if err != nil {
-		writeErr(w, err)
+		writeJSON(w, 502, map[string]string{"error": err.Error()})
 		return
 	}
-	code := 200
-	if res.Result == "refused" {
-		code = 409
-	}
-	writeJSON(w, code, res)
+	writeRaw(w, code, body)
 }
 
-func (s *server) handleStop(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		InstallationID string `json:"installation_id"`
-		Reason         string `json:"reason"`
-	}
-	if !decode(w, r, &in) {
-		return
-	}
-	reason := firstSet(strings.TrimSpace(in.Reason), "stop requested")
-	if len(reason) > 200 {
-		reason = reason[:200]
-	}
-	var err error
-	if in.InstallationID != "" {
-		err = s.host.StopService(reason, in.InstallationID)
-	} else {
-		err = s.host.StopService(reason)
-	}
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	writeJSON(w, 200, map[string]string{"result": "stopped", "note": "SIMULATED stop: the host process keeps running; the controller service is no longer started"})
-}
-
-func (s *server) handleRegister(w http.ResponseWriter, r *http.Request) {
-	var in struct {
-		InstallationID string      `json:"installation_id"`
-		ServiceID      string      `json:"service_id"`
-		Entities       []EntityRef `json:"entities"`
-	}
-	if !decode(w, r, &in) {
-		return
-	}
-	res, err := s.host.Register(in.InstallationID, in.ServiceID, in.Entities)
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	writeJSON(w, 200, map[string]any{"registrations": res, "simulated": true})
-}
-
-// handleDiagnostics: safe to paste. Thought titles, notes and names are left
-// out; IDs, states, counts and provenance are kept. No credentials exist here.
 func (s *server) handleDiagnostics(w http.ResponseWriter, r *http.Request) {
-	h := s.host
-	c := h.cfg
-	ws := h.Workspace()
-	cnt := h.Counters()
+	a := s.app
+	raw, st := a.src.Status()
+	c := a.cfg
 	var b strings.Builder
 	fmt.Fprintf(&b, "## Thought Controller diagnostics (%s)\n\n", time.Now().UTC().Format(time.RFC3339))
-	fmt.Fprintf(&b, "- Mode: **SIMULATED HOST** · protocol %s · authentication NONE · %s · Go %s · %s/%s\n", protocol, c.Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	fmt.Fprintf(&b, "- Reference: %s · branch %s (from %s)%s · commit %s\n", refRepo, c.Branch, c.BranchFrom, map[bool]string{true: " · detached checkout", false: ""}[c.Detached], c.Commit)
-	fmt.Fprintf(&b, "- Provenance: TEST / LOCAL CHECKOUT (no published approved release exists)\n")
-	fmt.Fprintf(&b, "- Host: pid %d · port %s · up %s · data %s (from %s)\n", os.Getpid(), c.Port, time.Since(h.started).Round(time.Second), c.DataDir, c.DataSource)
-	fmt.Fprintf(&b, "- Lifecycle counters: start requests %d · services started %d · already running (reused) %d · duplicate requests %d · refused %d · stops %d\n",
-		cnt.StartRequests, cnt.ServicesStarted, cnt.AlreadyRunning, cnt.DuplicateRequests, cnt.Refused, cnt.Stops)
-	fmt.Fprintf(&b, "- AI worker: NOT READY (none exists) · model calls: %d · GitHub calls: 0 · processes launched: 0\n", cnt.ModelCalls)
-	if !ws.Started {
-		b.WriteString("- Controller service: NOT STARTED (waiting for Identity's simulated launcher)\n")
-	} else {
-		fmt.Fprintf(&b, "- Controller service: READY (simulated) since %s · start request %s · launcher %q · consent %s\n", ws.StartedAt.Format(time.RFC3339), ws.RequestID, ws.Launcher, firstSet(ws.ConsentID, "(none sent)"))
-		fmt.Fprintf(&b, "  - installation_id %s\n  - controller service_id %s\n  - administrator_id %s\n  - bound at %s\n  - installation data %s\n",
-			ws.Binding.InstallationID, ws.Binding.ServiceID, ws.Binding.AdminID, ws.Binding.BoundAt.Format(time.RFC3339), ws.DataDir)
-		fmt.Fprintf(&b, "- Managed entities: %d\n", len(ws.Entities))
-		for _, e := range ws.Entities {
-			fmt.Fprintf(&b, "  - %s · %s · thoughts %d (continuing %d, active %d, sleeping %d, resolved %d)\n", e.EntityID, e.TypeLabel, e.Total,
-				e.Counts["continuing"], e.Counts["active"], e.Counts["sleeping"], e.Counts["resolved"])
+	fmt.Fprintf(&b, "- Thought Controller %s · protocol %s · Go %s · %s/%s\n", c.Version, protocol, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Fprintf(&b, "- Branch: %s (from %s)%s\n- Commit: %s\n", c.Branch, c.BranchFrom, map[bool]string{true: " · detached checkout", false: ""}[c.Detached], c.Commit)
+	fmt.Fprintf(&b, "- Instance: %s (created %s) · pid %d · port %s · up %s\n", a.inst.InstanceID, a.inst.CreatedAt.Format(time.RFC3339), os.Getpid(), c.Port, time.Since(a.started).Round(time.Second))
+	fmt.Fprintf(&b, "- Data folder: %s (from %s) — holds only instance, settings and log; thought data stays in the Thought engine\n", c.DataDir, c.DataSource)
+	fmt.Fprintf(&b, "- Identity: %s\n", identityStatus["state"])
+	fmt.Fprintf(&b, "- External calls: AI model 0 · GitHub 0 · Identity 0 · processes launched 0\n")
+	fmt.Fprintf(&b, "\n### Thought engine\n\n- Address: %s · state **%s** — %s\n", st.Address, st.State, st.Detail)
+	if st.CheckedAt != nil {
+		fmt.Fprintf(&b, "- Last check: %s · %d ms", st.CheckedAt.Format(time.RFC3339), st.LatencyMS)
+		if st.LastOKAt != nil {
+			fmt.Fprintf(&b, " · last good read %s", st.LastOKAt.Format(time.RFC3339))
 		}
-		fmt.Fprintf(&b, "- Problem files: %d\n", len(ws.Problems))
-		for _, p := range ws.Problems {
-			fmt.Fprintf(&b, "  - %s: %s\n", p.File, p.Reason)
+		b.WriteString("\n")
+	}
+	k := st.Counters
+	fmt.Fprintf(&b, "- Reads %d · read errors %d · owner actions sent %d (accepted %d, refused by engine %d) · engine changes seen %d\n",
+		k.Reads, k.ReadErrors, k.ActionsSent, k.ActionsAccepted, k.ActionsRefused, k.SourceChanges)
+	if st.LastError != "" {
+		fmt.Fprintf(&b, "- Last error (%s): %s\n", st.LastErrorAt.Format(time.RFC3339), st.LastError)
+	}
+	if e := st.Engine; e != nil {
+		fmt.Fprintf(&b, "- Engine: %s · branch %s · commit %s · pid %d\n- Engine mode (as the engine reports it): %s\n- Engine profile %s · installation %s · Thought service %s\n- Engine rule: %s\n- Engine problem files: %d\n",
+			e.Version, e.Branch, e.Commit, e.PID, e.Mode, e.Profile, e.InstallationID, e.ThoughtServiceID, e.RuleText, e.Problems)
+	}
+	if raw != nil {
+		var sh struct {
+			Entities []struct {
+				Card struct {
+					EntityID   string `json:"entity_id"`
+					EntityType string `json:"entity_type"`
+				} `json:"card"`
+				Grant struct {
+					Enabled bool   `json:"enabled"`
+					Kind    string `json:"kind"`
+				} `json:"grant"`
+				Counts map[string]int `json:"counts"`
+			} `json:"entities"`
 		}
-		if ws.EventsErr != "" {
-			fmt.Fprintf(&b, "- Installation event log: %s\n", ws.EventsErr)
-		}
-	}
-	if e := h.events.Err(); e != "" {
-		fmt.Fprintf(&b, "- Host event log: %s\n", e)
-	}
-	b.WriteString("\n### Recent host events\n\n")
-	for _, e := range h.events.Recent(15) {
-		fmt.Fprintf(&b, "- %s %s: %s%s\n", e.At.Format("15:04:05"), e.Kind, e.Detail, idSuffix(e.ID))
-	}
-	if ws.Started {
-		b.WriteString("\n### Recent installation events\n\n")
-		for _, e := range ws.Events {
-			if len(ws.Events) > 15 && e.At.Before(ws.Events[len(ws.Events)-15].At) {
-				continue
+		if json.Unmarshal(raw, &sh) == nil {
+			fmt.Fprintf(&b, "\n### Identities (as the engine reports them)\n\n")
+			for _, e := range sh.Entities {
+				fmt.Fprintf(&b, "- %s · %s · Thought %s · events %d · Traces %d · Thoughts active %d / sleeping %d / resolved %d\n", e.Card.EntityID, e.Card.EntityType,
+					map[bool]string{true: "ENABLED", false: "DISABLED"}[e.Grant.Enabled], e.Counts["events"], e.Counts["traces"], e.Counts["thoughts_active"], e.Counts["thoughts_sleeping"], e.Counts["thoughts_resolved"])
 			}
-			fmt.Fprintf(&b, "- %s %s: %s%s\n", e.At.Format("15:04:05"), e.Kind, e.Detail, idSuffix(e.ID))
 		}
 	}
-	b.WriteString("\n_Names, thought titles and notes are left out. No credentials exist in this app._\n")
+	a.mu.Lock()
+	for _, p := range a.problems {
+		fmt.Fprintf(&b, "- Problem: %s\n", p)
+	}
+	a.mu.Unlock()
+	if e := a.events.Err(); e != "" {
+		fmt.Fprintf(&b, "- Activity log: %s\n", e)
+	}
+	b.WriteString("\n### Recent activity\n\n")
+	for _, e := range a.events.Recent(15) {
+		fmt.Fprintf(&b, "- %s %s: %s\n", e.At.Format("15:04:05"), e.Kind, e.Detail)
+	}
+	b.WriteString("\n_Names, thought questions and event text are left out. No credentials exist in this app._\n")
 	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write([]byte(b.String()))
 }
 
-func (s *server) handleThoughtDiagnostics(w http.ResponseWriter, r *http.Request) {
-	t, err := s.host.GetThought(r.PathValue("eid"), r.PathValue("tid"))
-	if err != nil {
-		writeErr(w, err)
-		return
-	}
-	c := s.host.cfg
-	var b strings.Builder
-	fmt.Fprintf(&b, "## Thought diagnostics (%s)\n\n", time.Now().UTC().Format(time.RFC3339))
-	fmt.Fprintf(&b, "- thought_id %s\n- entity_id %s\n- installation_id %s\n", t.ThoughtID, t.EntityID, t.InstallationID)
-	fmt.Fprintf(&b, "- state %s · SIMULATED %v · origin: %s\n", t.State, t.Simulated, t.Origin)
-	fmt.Fprintf(&b, "- created %s · updated %s · notes %d · history entries %d\n", t.CreatedAt.Format(time.RFC3339), t.UpdatedAt.Format(time.RFC3339), len(t.Notes), len(t.History))
-	fmt.Fprintf(&b, "- worker/model calls for this thought: %d (no AI worker exists in this prototype)\n", t.WorkerCalls)
-	fmt.Fprintf(&b, "- stored at installations/%s/entities/%s/thoughts/%s.json\n", t.InstallationID, t.EntityID, t.ThoughtID)
-	fmt.Fprintf(&b, "- controller build: %s @ %s (%s) · protocol %s\n", c.Branch, c.Commit, c.Version, protocol)
-	b.WriteString("\n### Lifecycle\n\n")
-	for _, hi := range t.History {
-		arrow := ""
-		if hi.From != "" || hi.To != "" {
-			arrow = fmt.Sprintf(" %s→%s", firstSet(hi.From, "∅"), hi.To)
-		}
-		fmt.Fprintf(&b, "- %s %s%s: %s\n", hi.At.Format(time.RFC3339), hi.Kind, arrow, hi.Detail)
-	}
-	b.WriteString("\n_Title and note text are left out._\n")
-	w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Write([]byte(b.String()))
-}
-
-func idSuffix(id string) string {
-	if id == "" {
-		return ""
-	}
-	return " " + id
-}
-
-// ---------- safety (same guards as Identity V1's server.go) ----------
+// ---------- safety ----------
 
 // local: only requests addressed to this machine's loopback name (blocks
 // DNS-rebinding pages). The server also only listens on 127.0.0.1.
@@ -333,7 +224,6 @@ func local(h http.HandlerFunc) http.HandlerFunc {
 }
 
 // write: local + same-origin + JSON body (stops other web pages posting).
-// Server-to-server calls from Identity send no Origin header.
 func write(h http.HandlerFunc) http.HandlerFunc {
 	return local(func(w http.ResponseWriter, r *http.Request) {
 		if o := r.Header.Get("Origin"); o != "" && o != "http://"+r.Host {
@@ -349,7 +239,7 @@ func write(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10))
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		writeJSON(w, 400, map[string]string{"error": "invalid request: " + err.Error()})
@@ -365,10 +255,15 @@ func writeErr(w http.ResponseWriter, err error) {
 		code = 400
 	case errors.Is(err, ErrNotFound):
 		code = 404
-	case errors.Is(err, ErrNotStarted), errors.Is(err, ErrConflict):
-		code = 409
 	}
 	writeJSON(w, code, map[string]string{"error": err.Error()})
+}
+
+func writeRaw(w http.ResponseWriter, code int, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(code)
+	w.Write(body)
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

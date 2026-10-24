@@ -1,6 +1,6 @@
 {
-  "name": "Thought Controller — first new-administrator dashboard (SIMULATED)",
-  "description": "Identity-organized thought dashboard (TASS, Example Workshop, System Services) on a simulated host. Started for an installation only by Identity's simulated launcher. Test thoughts only: no AI worker, no GitHub, no process launching.",
+  "name": "Thought Controller — dashboard on the real Thought engine",
+  "description": "Netflix-style dashboard of the real Sparks, Traces and Thoughts produced by a running Thought engine (Arameair/Thought), organized by identity. Sleep / Wake / Resolve requests go to the engine, which enforces its own permissions. No AI, no GitHub, no process launching.",
   "requires": ["go"],
   "setup": "go build -o thought-controller .",
   "run": "exec ./thought-controller",
